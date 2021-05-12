@@ -352,6 +352,7 @@ test(some_message_wire) :-
 
 :- begin_tests(repeated_fields).
 
+
 % Taken from https://developers.google.com/protocol-buffers/docs/encoding#packed
 %
 % message Test4 {
@@ -365,6 +366,12 @@ test(some_message_wire) :-
 %   03        // first element (varint 3)
 %   8E 02     // second element (varint 270)
 %   9E A7 05  // third element (varint 86942)
+
+test(packed1) :-
+    Segment = message(999999,[packed(4,varint([3,270,86942]))]),
+    findall(S, protobuf_segment_convert(Segment, S), Ss),
+    assertion(Ss == [message(999999,[packed(4,varint([3,270,86942]))]),
+                     length_delimited(999999,[34,6,3,142,2,158,167,5])]).
 
 test(not_packed_repeated) :-
     Message = protobuf([repeated(4, unsigned([3, 270, 86942]))]),
@@ -447,7 +454,6 @@ test(packed_and_unpacked_repeated) :-
                                   protobuf([packed(_Tag1_b, unsigned(_Ints0_b))]))]),
     protobuf_message(Message, WireStream),
     findall(Segments, protobuf_segment_message(Segments, WireStream), AllSegments),
-    protobuf_message(Template, WireStream),
     % The result is combinatoric explosion:
     findall([S1,S2], ( member(S1, [ message(666,[varint(4,3),varint(4,270),varint(4,86942)]),
                                     packed(666,varint([32,3,32,270,32,86942])),
@@ -461,7 +467,9 @@ test(packed_and_unpacked_repeated) :-
                                     length_delimited(999999,[34,6,3,142,2,158,167,5])
                                   ]) ),
                       ExpectedSegments),
+    assertion(AllSegments == ExpectedSegments),
     assertion(WireStream == [210,41,9,32,3,32,142,2,32,158,167,5,250,163,232,3,8,34,6,3,142,2,158,167,5]),
+    protobuf_message(Template, WireStream),
     assertion(Template == Message).
 
 :- end_tests(repeated_fields).
@@ -485,8 +493,17 @@ test(protobuf_message) :-
     protobuf_segment_message([Msg], CodesFromMsg),
     assertion(CodesFromMsg == Codes).
 
+test(protobuf_message2) :-
+    test_data(Msg, _, _, _),
+    % Check that we can reinterpret a segment that comes out
+    % in an unexpected form:
+    findall(S, protobuf_segment_convert(Msg, S), Ss),
+    assertion(Ss == [Msg,
+                     string(10, "inputType"),
+                     length_delimited(10,[105,110,112,117,116,84,121,112,101])]).
+
 test(message_string1,
-     [true(Strs = [Str, Ld])]) :-
+     [true(Strs = [Msg, Str, Ld])]) :-
     test_data(Msg, Str, Ld, _),
     findall(S, protobuf_segment_convert(Msg, S), Strs).
 
