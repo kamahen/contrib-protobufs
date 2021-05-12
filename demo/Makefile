@@ -28,7 +28,7 @@
 
 .DEFAULT_GOAL=test_all
 
-test_all: check test_basic_usage test_segment_messages test_send_command test_send_precompiled_command
+test_all: check test_basic_usage test_segment_messages test_send_command test_send_precompiled_command other_tests
 
 # SHELL:=/bin/bash
 # PROTOC=$(shell type -p protoc)
@@ -175,13 +175,31 @@ test_protobufs:
 # so we can't just do
 #    ln -s $(HOME)/src/contrib-protobufs $(HOME)/src/swipl-devel/packages/protobufs
 
-.PHONY: test_doc
-test_doc:
-	rsync -avHx --delete $(HOME)/src/contrib-protobufs/ $(HOME)/src/swipl-devel/packages/protobufs/
-	cd $(HOME)/src/swipl-devel && \
+.PHONY: rebuild rebuild_clean rebuild other_tests
+
+rebuild_clean:
+	cd ../../.. && git clean -dxf
+	$(MAKE) rebuild
+
+rebuild:
+	cd ../../.. && \
 		mkdir -p build && \
 		cd build && \
 		cmake -G Ninja .. && \
 		ninja && \
-		gio open $(HOME)/src/swipl-devel/build/packages/protobufs/protobufs.html
+		ctest -j8
+	@# gio open $(HOME)/src/swipl-devel/build/packages/protobufs/protobufs.html
 
+other_tests:
+	@# "ctest -V -R protobufs" is envoked by "test_protobufs"
+	cd ../../../build && ninja && ctest -V -R protobufs
+	$(MAKE) -C ../interop test
+
+.PHONY: testx
+testx:
+	cd ../../../build && ninja
+	make SWIPL=$(HOME)/src/swipl-devel/build/src/swipl $(HOME)/src/swipl-devel/packages/protobufs/demo test_all
+
+.PHONY: tar
+tar:
+	cd ../../.. && tar --create --bzip2 --file ~/Downloads/contrib-protobufs-$$(date +%Y-%m-%d-%H-%M).tjz packages/protobufs

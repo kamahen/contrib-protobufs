@@ -100,7 +100,7 @@ segment_to_term(ContextType, varint(Tag,Value), FieldAndValue) =>
     field_and_type(ContextType, Tag, FieldName, _FqnName, ContextType2, Label, Type),
     scalar_value(Type, varint(Tag,Value), Value2),
     label_repeat(Label, LabelRepeat),
-    % DO NOT SUBMIT - move following into scalar_value:
+    % TODO: move following into scalar_value:
     (   Type = 'TYPE_ENUM'
     ->  proto_enum_value(ContextType2, V, Value2)
     ;   V = Value2
