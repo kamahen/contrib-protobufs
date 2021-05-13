@@ -21,6 +21,9 @@
 # This demo was tested with protoc versions 3.6.1 and 3.15.8
 # on Ubuntu 20.04.2.
 
+# Many of the rules at the end of this Makefile are for development
+# and will eventually be removed.
+
 .SUFFIXES: .proto .cpp .cc .o .proto.wire .pl .py .proto.rawdump .proto.dump .proto.rawdump
 
 .PHONY: FORCE check clean docs
@@ -115,7 +118,7 @@ test_send_precompiled_command: vector_demo.pl FORCE
 
 clean:
 	@# TODO: special handling for descriptor.* files
-	$(RM) -r foo *.o *.pb.cc *.pb.h *.tmp *_pb2.py *.proto.wire doc/ *.proto.rawdump addressbook.proto.dump
+	$(RM) -r foo *.o *.pb.cc *.pb.h *.tmp *_pb2.py doc/ *.proto.rawdump addressbook.proto.dump
 
 # Generate the documentation from ../protobufs.pl
 # The result is in ../doc/protobufs.html
@@ -135,11 +138,13 @@ addressbook.proto.dump: addressbook.proto.wire
 
 .PHONY: addressbook.segment
 addressbook.segment: descriptor_proto.pl addressbook.proto.wire FORCE
-	swipl -g "descriptor_segment('addressbook.proto.wire', Msg), print_term(Msg, []), halt." descriptor_proto.pl
+	swipl -g "descriptor_segment('addressbook.proto.wire', Msg), print_term(Msg, [indent_arguments(4)]), writeln(.), halt." descriptor_proto.pl
+	@# TODO: output to addressbook.proto.segment & compare w/golden
 
 .PHONY: descriptor.segment
 descriptor.segment: descriptor_proto.pl descriptor.proto.wire FORCE
-	swipl -g "descriptor_segment('descriptor.proto.wire', Msg), print_term(Msg, []), halt." descriptor_proto.pl
+	swipl -g "descriptor_segment('descriptor.proto.wire', Msg), print_term(Msg, [indent_arguments(4)]), writeln(.), halt." descriptor_proto.pl
+	@# TODO: compare with descriptor.proto.segment & compare w/golden
 
 descriptor.proto.dump: descriptor.proto.wire
 	$(PROTOC) -I. -I$(SRC_PROTOBUF)/src/google/protobuf \

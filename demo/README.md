@@ -30,6 +30,8 @@ the protobuf compiler (`protoc`).
   into a Prolog term.
 * `descriptor_proto.pl` is the term created by `parse_descriptor_proto_dump.pl`,
   in the clause `descriptor_proto/1`.
+* `descriptor.proto.segment` is the "golden" output from rule `descriptor.segment`.
+  TODO: delete this file.
 
 TODO: use `protobuf\_segment\_message/2` to process
 `descriptor.proto.wire` and any other `descriptor\_set\_out`, and then
@@ -44,3 +46,6 @@ tutorial](https://developers.google.com/protocol-buffers/docs/pythontutorial).
 
 They have been slightly modified to put the `TimeStamps` message into
 a second `.proto` file, in order to test a few things.
+
+`addressbook.proto.segment` is the "golden" output from rule `addressbook.segment`.
+TODO: delete this file.
