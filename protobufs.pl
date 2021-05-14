@@ -189,6 +189,7 @@ protobuf_tag_type(Tag, Type, Rest, Rest1) :-
 % When Type is a variable, backtracks through all the possibilities
 % for a given wire encoding.
 % Note that 'repeated' isn't here because it's handled by message_sequence//3.
+% See also segment_type_tag/3.
 prolog_type(Tag, double) -->     protobuf_tag_type(Tag, fixed64).
 prolog_type(Tag, integer64) -->  protobuf_tag_type(Tag, fixed64).
 prolog_type(Tag, float) -->      protobuf_tag_type(Tag, fixed32).
@@ -517,7 +518,7 @@ segment(Segment) -->
     protobuf_tag_type(Tag, Type),
     segment(Type, Tag, Segment).
 
-% TODO: combine with prolog_type//2 ?
+% See also prolog_type//2
 segment_type_tag(varint(Tag,_Codes),           varint,           Tag).
 segment_type_tag(fixed64(Tag,_Codes),          fixed64,          Tag).
 segment_type_tag(start_group(Tag),             start_group,      Tag).

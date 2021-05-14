@@ -292,8 +292,8 @@ test("Test1a,Test1 - test set-up check: Unifying canned Golden Message with cann
     % golden_message_template/1, golden_message/1 have same "shape":
     assertion(subsumes_term(Template, Message)),
     Message = Template,
-    % TODO: Why the following test? Leaving it here because it was in
-    %       the original test file.
+    % TODO: Why the following test? Leaving it because it was in the
+    %       original test file.
     Message == Template.
 
 test("Test2 - Unifying canned Golden Message with Google's Golden Wirestream") :-

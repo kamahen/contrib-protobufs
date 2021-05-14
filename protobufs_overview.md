@@ -52,7 +52,8 @@ protobuf([
         repeated(6, embedded([
             protobuf([integer(1, 1234), string(2, "onetwothreefour")]),
             protobuf([integer(1, 2222), string(2, "four twos")])])),
-        repeated(7, integer([1,2,3,4])) % TODO: packed(7, ...)
+        repeated(7, integer([1,2,3,4])),
+        packed(8, integer([5,6,7,8]))
     ])
 ```
 
