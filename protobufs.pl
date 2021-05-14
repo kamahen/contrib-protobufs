@@ -617,6 +617,15 @@ packed_option(integer32, Items, fixed32(Items)).
 %        string(10, "inputType"),
 %        length_delimited(10,[105,110,112,117,116,84,121,112,101])).
 % ==
+% These come from:
+% ==
+% Codes = [82,9,105,110,112,117,116,84,121,112,101],
+% protobuf_message(protobuf([embedded(T1, protobuf([integer64(T2, I)]))]), Codes),
+% protobuf_message(protobuf([string(T,S)]), Codes).
+%    T = 10, T1 = 10, T2 = 13,
+%    I = 7309475598860382318,
+%    S = "inputType".
+% ==
 %
 %  @bug This predicate is preliminary and may change as additional
 %       functionality is added.

@@ -37,7 +37,7 @@
     ]).
 
 :- use_module(descriptor_proto_expand, [descriptor_proto_expand_file//1]).
-:- use_module(library(readutil), [read_file_to_codes/3, read_stream_to_codes/3]).  % DO NOT SUBMIT - remove read_file_to_codes/3
+:- use_module(library(readutil), [read_stream_to_codes/3]).
 :- use_module(library(protobufs)).
 :- use_module(library(debug)).
 

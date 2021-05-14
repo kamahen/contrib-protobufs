@@ -385,12 +385,44 @@ with tag 23.
     packed(23, enum(tank_state([empty, half_full, full]))).
 ```
 
+### Handling missing fields {#protobufs-missing}
+
+For input, you can wrap fields in `repeated`, so that if a field is there,
+it gets a length-1 list and if it's missing, an empty list:
+
+```prolog
+?- Codes = [82,9,105,110,112,117,116,84,121,112,101],
+   protobuf_message(protobuf([embedded(10, protobuf([repeated(13, integer64(I))]))]),  Codes),
+   protobuf_message(protobuf([embedded(10, protobuf([repeated(13, double(D))]))]),  Codes),
+   protobuf_message(protobuf([repeated(10, string(S))]), Codes).
+I = [7309475598860382318],
+D = [4.272430685433854e+180],
+S = ["inputType"].
+```
+
+```
+?- Codes = [82,9,105,110,112,117,116,84,121,112,101],
+      protobuf_message(protobuf([repeated(10, string(S)),
+                                 repeated(11, integer64(I))]), Codes).
+S = ["inputType"],
+I = [].
+```
+
+This technique can also be used for output - a missing field simply
+produces nothing in the wire format:
+```
+?- protobuf_message(protobuf([repeated(10, string([]))]), Codes).
+Codes = [].
+?- protobuf_message(protobuf([repeated(10, string(S))]), []).
+S = [].
+```
 
 ### Encapsulation and Enumeration {#protobufs-encapsulation}
 
-It is possible to embed one protocol buffer specification inside another
-using the =embedded= term.  The  following   example  shows  a vector of
-numbers being placed in an envelope that contains a command enumeration.
+It is possible to embed one protocol buffer specification inside
+another using the =embedded= term.  The following example shows a
+vector of numbers being placed in an envelope that contains a command
+enumeration.
 
 Enumerations are a compact method of sending   tokens from one system to
 another. Most occupy only two bytes   in the wire-stream. An enumeration
