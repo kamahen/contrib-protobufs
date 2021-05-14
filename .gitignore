@@ -33,3 +33,8 @@ __pycache__
 some_message.wire
 some_message_pb2.py
 TAGS
+*.pb.cc
+*.pb.h
+*_pb2.py
+*.wire
+*.o

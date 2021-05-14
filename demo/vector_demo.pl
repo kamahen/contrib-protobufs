@@ -110,7 +110,7 @@ test_basic_usage(['X'=X,
 
 % ======================
 
-% vector_type/2 corresponds to pb-vector.proto enum VectorType
+% vector_type/2 corresponds to pb_vector.proto enum VectorType
 vector_type(double(_List),    2).
 vector_type(float(_List),     3).
 vector_type(integer(_List),   4).
@@ -121,7 +121,7 @@ vector_type(codes(_List),     8).
 vector_type(atom(_List),      9).
 vector_type(string(_List),    10).
 
-% basic_vector/2 corresponds to pb-vector.proto message Vector
+% basic_vector/2 corresponds to pb_vector.proto message Vector
 basic_vector(TypedList, Template) :-
     vector_type(TypedList, Tag),
     Template = protobuf([ repeated(Tag, TypedList) ]).

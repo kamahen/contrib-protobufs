@@ -630,7 +630,7 @@ message XMLFile {
 Verify the wire stream using the protobuf compiler's decoder:
 
 ```
-$ protoc --decode=XMLFile pb-vector.proto <tmp98.tmp
+$ protoc --decode=XMLFile pb_vector.proto <tmp98.tmp
 elements {
   name: "space1"
   attributes {
@@ -768,7 +768,7 @@ Vector = double([-2.2212, -7.6675, 3.14159, 0.0, 1.77e-09, 2.54e+222])
 Verify the wire stream using the protobuf compiler's decoder:
 
 ```
-$ protoc --decode=Vector pb-vector.proto <tmp99.tmp
+$ protoc --decode=Vector pb_vector.proto <tmp99.tmp
 double_values: -2.2212
 double_values: -7.6675
 double_values: 3.1415926535897931
@@ -837,7 +837,7 @@ message protobuf_bag {
 Verify the wire stream using the protobuf compiler's decoder:
 
 ```
-$ protoc --decode=protobuf_bag pb-vector.proto <tmp96.tmp
+$ protoc --decode=protobuf_bag pb_vector.proto <tmp96.tmp
 bag {
   Complex {
     real: 2
