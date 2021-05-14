@@ -118,12 +118,12 @@ test_send_precompiled_command: vector_demo.pl FORCE
 
 clean:
 	@# TODO: special handling for descriptor.* files
-	$(RM) -r foo *.o *.pb.cc *.pb.h *.tmp *_pb2.py doc/ *.proto.rawdump addressbook.proto.dump
+	$(RM) -r foo *.o *.pb.cc *.pb.h *.tmp *_pb2.py doc/ *.proto.rawdump addressbook.proto.dump ../TAGS
 
 # Generate the documentation from ../protobufs.pl
 # The result is in ../doc/protobufs.html
 docs:
-	cd .. && swipl -g 'use_module(library(doc_files))' \
+	cd .. && $(SWIPL) -g 'use_module(library(doc_files))' \
 		-g 'doc_save(.,[])' -g halt protobufs.pl
 
 # TODO: remove the following
@@ -137,13 +137,14 @@ addressbook.proto.dump: addressbook.proto.wire
 		<$? >$@
 
 .PHONY: addressbook.segment
+# make SWIPL=$HOME/src/swipl-devel/build/src/swipl -C ~/src/swipl-devel/packages/protobufs/demo rebuild0 addressbook.segment # descriptor.segment
 addressbook.segment: descriptor_proto.pl addressbook.proto.wire FORCE
-	swipl -g "descriptor_segment('addressbook.proto.wire', Msg), print_term(Msg, [indent_arguments(4)]), writeln(.), halt." descriptor_proto.pl
+	$(SWIPL) -g "addressbook_segment" -t "halt" descriptor_proto.pl
 	@# TODO: output to addressbook.proto.segment & compare w/golden
 
 .PHONY: descriptor.segment
 descriptor.segment: descriptor_proto.pl descriptor.proto.wire FORCE
-	swipl -g "descriptor_segment('descriptor.proto.wire', Msg), print_term(Msg, [indent_arguments(4)]), writeln(.), halt." descriptor_proto.pl
+	$(SWIPL) -g "descriptor_segment" -t "halt" descriptor_proto.pl
 	@# TODO: compare with descriptor.proto.segment & compare w/golden
 
 descriptor.proto.dump: descriptor.proto.wire
@@ -153,7 +154,7 @@ descriptor.proto.dump: descriptor.proto.wire
 		<$? >$@
 
 descriptor.proto.parse: descriptor.proto.dump parse_descriptor_proto_dump.pl FORCE
-	swipl -g parse_descriptor -g halt parse_descriptor_proto_dump.pl
+	$(SWIPL) -g parse_descriptor -g halt parse_descriptor_proto_dump.pl
 
 descriptor.proto.rawdump: descriptor.proto.wire
 	$(PROTOC) --decode_raw <descriptor.proto.wire >$@
@@ -195,6 +196,13 @@ rebuild:
 		ctest -j8
 	@# gio open $(HOME)/src/swipl-devel/build/packages/protobufs/protobufs.html
 
+rebuild0: # same as rebuild but without the test
+	cd ../../.. && \
+		mkdir -p build && \
+		cd build && \
+		cmake -G Ninja .. && \
+		ninja
+
 other_tests:
 	@# "ctest -V -R protobufs" is envoked by "test_protobufs"
 	cd ../../../build && ninja && ctest -V -R protobufs
@@ -208,3 +216,8 @@ testx:
 .PHONY: tar
 tar:
 	cd ../../.. && tar --create --bzip2 --file ~/Downloads/contrib-protobufs-$$(date +%Y-%m-%d-%H-%M).tjz packages/protobufs
+
+.PHONY: etags
+etags:	../TAGS
+../TAGS: ../*.pl ./*.pl ../interop/*.pl
+	etags -l prolog -o $@ ../*.pl ./*.pl ../interop/*.pl

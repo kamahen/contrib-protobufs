@@ -37,7 +37,7 @@
 %  (see "Basic Usage" section in ../protobufs_overview.md)
 
 % TODO: move this to ../test_protobufs.pl
-% %ODO: There is no associated .proto for this example
+% TODO: Create an associated .proto for this example
 
 %! command(+Term, -Proto) is det.
 % Map a Prolog term to a corresponding protobuf term.

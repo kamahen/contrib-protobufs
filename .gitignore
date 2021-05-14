@@ -32,3 +32,4 @@ autom4te.cache
 __pycache__
 some_message.wire
 some_message_pb2.py
+TAGS
