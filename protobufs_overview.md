@@ -635,7 +635,7 @@ Y = [162, 1, 193, 1, 170, 1, 6, 115, 112|...],
 A protobuf description that is compatible with the above wire stream
 follows:
 
-```prolog
+```
 message kv_pair {
   required string key = 30;
   optional sint64  int_value = 31;

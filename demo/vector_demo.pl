@@ -298,37 +298,38 @@ xml_proto([element(space1,
 xml_protobuf(X) :-
     X = protobuf([
           repeated(20,
-                   embedded([ protobuf([ string(21,"space1"),
-                                         repeated(22,embedded([protobuf([string(30,"foo"),string(33,"1")]),protobuf([string(30,"bar"),string(33,"2")])])),
-                                         repeated(23,
-                                                  embedded([ protobuf([string(43,"fum")]),
-                                                             protobuf([string(43,"bar")]),
-                                                             protobuf([ embedded(40,
-                                                                                 protobuf([ string(21,"space2"),
-                                                                                            repeated(22,
-                                                                                                     embedded([ protobuf([string(30,"fum"),double(32,3.1415)]),
-                                                                                                                protobuf([string(30,"bum"),
-                                                                                                                          unsigned(31,27) %%%%%% TODO: signed???
-                                                                                                                         ])
-                                                                                                              ])),
-                                                                                            embedded(23,protobuf([string(43,"more stuff for you")]))
+              embedded([protobuf([string(21,"space1"),
+                                  repeated(22,
+                                      embedded([protobuf([string(30,"foo"),string(33,"1")]),protobuf([string(30,"bar"),string(33,"2")])])),
+                                  repeated(23,
+                                      embedded([protobuf([string(43,"fum")]),
+                                                protobuf([string(43,"bar")]),
+                                                protobuf([embedded(40,
+                                                                   protobuf([string(21,"space2"),
+                                                                             repeated(22,
+                                                                                 embedded([protobuf([string(30,"fum"),double(32,3.1415)]),
+                                                                                           protobuf([string(30,"bum"),
+                                                                                                     integer(31,-14)
+                                                                                                    ])
+                                                                                          ])),
+                                                                             embedded(23,protobuf([string(43,"more stuff for you")]))
+                                                                            ]))
+                                                         ]),
+                                                protobuf([embedded(40,
+                                                                   protobuf([string(21,"space2b"),
+                                                                             repeated(23,
+                                                                                 embedded([protobuf([string(43,"this")]),
+                                                                                           protobuf([string(43,"is")]),
+                                                                                           protobuf([string(43,"embedded")]),
+                                                                                           protobuf([string(43,"also")])
                                                                                           ]))
-                                                                      ]),
-                                                             protobuf([ embedded(40,
-                                                                                 protobuf([ string(21,"space2b"),
-                                                                                            repeated(23,
-                                                                                                     embedded([ protobuf([string(43,"this")]),
-                                                                                                                protobuf([string(43,"is")]),
-                                                                                                                protobuf([string(43,"embedded")]),
-                                                                                                                protobuf([string(43,"also")])
-                                                                                                              ]))
-                                                                                          ]))
-                                                                      ]),
-                                                             protobuf([string(43,"to")]),
-                                                             protobuf([string(43,"you")])
-                                                           ]))
-                                       ])
-                            ]))
+                                                                            ]))
+                                                         ]),
+                                                protobuf([string(43,"to")]),
+                                                protobuf([string(43,"you")])
+                                               ]))
+                                 ])
+                       ]))
                  ]).
 
 test_xml(X, Y) :-
@@ -346,7 +347,23 @@ test_xml(['XmlProto'=XmlProto, 'WireCodes'=WireCodes, 'Segments'=Segments, 'Temp
     protobuf_segment_message(Segments, WireCodes),
     % segments_to_template(Segments, T0), print_term(T0, [right_margin(160)]), nl,
     xml_protobuf(Template),
-    protobuf_message(Template, WireCodes).
+    protobuf_message(Template, WireCodes),
+    % Verify same WireCodes as produced by xml_example.py:
+    assertion(WireCodes ==
+       [162, 1, 198, 1, 170, 1, 6, 115, 112, 97, 99, 101, 49, 178, 1,
+        10, 242, 1, 3, 102, 111, 111, 138, 2, 1, 49, 178, 1, 10, 242,
+        1, 3, 98, 97, 114, 138, 2, 1, 50, 186, 1, 6, 218, 2, 3, 102,
+        117, 109, 186, 1, 6, 218, 2, 3, 98, 97, 114, 186, 1, 67, 194,
+        2, 64, 170, 1, 6, 115, 112, 97, 99, 101, 50, 178, 1, 16, 242,
+        1, 3, 102, 117, 109, 129, 2, 111, 18, 131, 192, 202, 33, 9,
+        64, 178, 1, 9, 242, 1, 3, 98, 117, 109, 248, 1, 27, 186, 1,
+        21, 218, 2, 18, 109, 111, 114, 101, 32, 115, 116, 117, 102,
+        102, 32, 102, 111, 114, 32, 121, 111, 117, 186, 1, 55, 194, 2,
+        52, 170, 1, 7, 115, 112, 97, 99, 101, 50, 98, 186, 1, 7, 218,
+        2, 4, 116, 104, 105, 115, 186, 1, 5, 218, 2, 2, 105, 115, 186,
+        1, 11, 218, 2, 8, 101, 109, 98, 101, 100, 100, 101, 100, 186,
+        1, 7, 218, 2, 4, 97, 108, 115, 111, 186, 1, 5, 218, 2, 2, 116,
+        111, 186, 1, 6, 218, 2, 3, 121, 111, 117]).
 
 test_xml :-
     test_xml(['XmlProto'=XmlProto, 'WireCodes'=WireCodes, 'Segments'=Segments, 'Template'=Template]),
