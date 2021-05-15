@@ -247,9 +247,9 @@ make_tmp99 :-
 %  xml_element, and aux_xml_element. These are treated as first class
 %  host types.
 %
-:- multifile protobufs:message_sequence/5.
+:- multifile protobufs:message_sequence//3.
 
-protobufs:message_sequence(Type, Tag, Value)  -->
+protobufs:message_sequence(Type, Tag, Value) -->
     { my_message_sequence(Type, Value, Proto) },
     protobufs:message_sequence(embedded, Tag, Proto),
     !.
@@ -275,23 +275,30 @@ my_message_sequence(xml_element, element(Name, Attributes, Contents), Proto) :-
 %
 %
 my_message_sequence(aux_xml_element, Contents, Proto) :-
-    functor(Contents, element, 3),
+    Contents = element(_Name, _Attributes, _ElementContents),
     Proto = protobuf([xml_element(40, Contents)]).
 
 my_message_sequence(aux_xml_element, Contents, Proto) :-
     Proto = protobuf([atom(43, Contents)]).
 
 
+% This is embedded in protobuf([repeated(20, xml_element(...))])
+% - see test_xml/2.
 xml_proto([element(space1,
-                   [foo='1', bar='2'],
+                   [foo='1',
+                    bar='2'],
                    [fum,
                     bar,
                     element(space2,
-                            [fum= 3.1415, bum= -14],
+                            [fum= 3.1415,
+                             bum= -14],
                             ['more stuff for you']),
                     element(space2b,
                             [],
-                            [this, is, embedded, also]),
+                            [this,
+                             is,
+                             embedded,
+                             also]),
                     to,
                     you])]).
 
@@ -332,9 +339,9 @@ xml_protobuf(X) :-
                        ]))
                  ]).
 
-test_xml(X, Y) :-
-    Proto = protobuf([repeated(20, xml_element(X))]),
-    protobuf_message(Proto, Y).
+test_xml(XmlProto, WireCodes) :-
+    Proto = protobuf([repeated(20, xml_element(XmlProto))]),
+    protobuf_message(Proto, WireCodes).
 
 %! test_xml(-WireCodes:list(int)) is det.
 % Tests outputting the data defined by xml_proto/1.
@@ -369,7 +376,7 @@ test_xml :-
     test_xml(['XmlProto'=XmlProto, 'WireCodes'=WireCodes, 'Segments'=Segments, 'Template'=Template]),
     print_term('XmlProto'=XmlProto, [right_margin(160)]), nl,
     print_term('Segments'=Segments, [right_margin(160)]), nl,
-    format('WireCodes:~n~q~n', [WireCodes]),
+    format('WireCodes: ~q~n', [WireCodes]),
     print_term('Template'=Template, [right_margin(160)]), nl.
 
 %! test_segment_messages is det.
@@ -400,5 +407,36 @@ segment_to_template(string(Tag, String), string(Tag, String)).
 segment_to_template(fixed64(Tag, Codes), fixed64(Tag, Codes)).
 segment_to_template(fixed32(Tag, Codes), fixed32(Tag, Codes)).
 segment_to_template(varint(Tag, Int), varint(Tag, Int)).
+
+% Convert xml_proto to dict form  DO NOT SUBMIT
+xml_xlate(element(Name,Attributes0,Contents0),
+          xml_element{name:Name,
+                      attributes:Attributes,
+                      contents:Contents}) :-
+    maplist(kv_pair, Attributes0, Attributes),
+    maplist(aux_xml_element, Contents0, Contents).
+
+kv_pair(Key=Value, Dict) :-
+    (   nonvar(Dict)
+    ->  Dict >:< kv_pair{key:Key, int_value:Value, float_value:Value, atom_value:Value}
+    ;   integer(Value) -> Dict = kv_pair{key:Key, int_value:Value}
+    ;   float(  Value) -> Dict = kv_pair{key:Key, float_value:Value}
+    ;   atom(   Value) -> Dict = kv_pair{key:Key, atom_value:Value}
+    ).
+
+aux_xml_element(element(Name, Attributes, Contents),
+                aux_xml_element{element:Element}) :-
+    xml_xlate(element(Name, Attributes, Contents), Element).
+aux_xml_element(Atom, aux_xml_element{atom:Atom}).
+
+test_xml_xlate :-
+    test_xml_xlate(D),
+    print_term(D, [right_margin(140)]).
+
+test_xml_xlate(D) :-
+    xml_proto(X),
+    maplist(xml_xlate, X, D),
+    vector_demo:maplist(xml_xlate, Y, D),
+    X == Y.
 
 precompile_commands.  % Trigger the term-expansion precompilation

@@ -14,14 +14,14 @@ def main():
             contents=[
                 xpb.aux_xml_element(atom="fum"),
                 xpb.aux_xml_element(atom="bar"),
-                xpb.aux_xml_element(element=xpb.xml_element(
-                    name="space2",
-                    attributes=[
-                        xpb.kv_pair(key="fum", float_value=3.1415),
-                        xpb.kv_pair(key="bum", int_value=-14)
-                    ],
-                    contents=[xpb.aux_xml_element(
-                        atom="more stuff for you")])),
+                xpb.aux_xml_element(
+                    element=xpb.xml_element(
+                        name="space2",
+                        attributes=[
+                            xpb.kv_pair(key="fum", float_value=3.1415),
+                            xpb.kv_pair(key="bum", int_value=-14)
+                        ],
+                        contents=[xpb.aux_xml_element(atom="more stuff for you")])),
                 xpb.aux_xml_element(
                     element=xpb.xml_element(
                         name="space2b",
@@ -36,7 +36,7 @@ def main():
             ])
     ])
     # print('xml:', xml)
-    print([c for c in xml.SerializeToString()])
+    print(list(xml.SerializeToString()))
 
 
 if __name__ == "__main__":
