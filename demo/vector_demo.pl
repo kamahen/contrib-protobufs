@@ -12,7 +12,6 @@
            send_precompiled_command/3,
            protobuf_bag/2,
            make_tmp99/0,
-           xml_proto/1,
            test_basic_usage/0,
            test_basic_usage/1,
            test_segment_messages/0,
@@ -71,7 +70,7 @@ command2_item(Item, MustBe, Items) :-
 
 test_basic_usage :-
     forall(test_basic_usage(Term),
-           ( print_term(Term, []), nl )).
+           ( print_term(Term, [indent_arguments(4)]), nl )).
 
 test_basic_usage(['X'=X,
                   'X2'=X2,
@@ -171,7 +170,7 @@ send_command(Command, Vector, WireCodes) :-
 test_send_command :-
     test_send_command(WireCodes),
     protobuf_segment_message(Seg, WireCodes),
-    print_term(Seg, []), nl.
+    print_term(Seg, [indent_arguments(4)]), nl.
 
 test_send_command(WireCodes) :-
     send_command(square, double([1,22,3,4]), WireCodes).
@@ -179,7 +178,7 @@ test_send_command(WireCodes) :-
 test_send_precompiled_command :-
     test_send_precompiled_command(WireCodes),
     protobuf_segment_message(Seg, WireCodes),
-    print_term(Seg, []), nl.
+    print_term(Seg, [indent_arguments(4)]), nl.
 
 test_send_precompiled_command(WireCodes) :-
     send_precompiled_command(square, double([1,22,3,4]), WireCodes).
@@ -275,7 +274,7 @@ my_message_sequence(xml_element, element(Name, Attributes, Contents), Proto) :-
                        repeated(23, aux_xml_element(Contents))]).
 %
 %
-my_message_sequence(aux_xml_element,  Contents, Proto) :-
+my_message_sequence(aux_xml_element, Contents, Proto) :-
     functor(Contents, element, 3),
     Proto = protobuf([xml_element(40, Contents)]).
 
@@ -296,6 +295,42 @@ xml_proto([element(space1,
                     to,
                     you])]).
 
+xml_protobuf(X) :-
+    X = protobuf([
+          repeated(20,
+                   embedded([ protobuf([ string(21,"space1"),
+                                         repeated(22,embedded([protobuf([string(30,"foo"),string(33,"1")]),protobuf([string(30,"bar"),string(33,"2")])])),
+                                         repeated(23,
+                                                  embedded([ protobuf([string(43,"fum")]),
+                                                             protobuf([string(43,"bar")]),
+                                                             protobuf([ embedded(40,
+                                                                                 protobuf([ string(21,"space2"),
+                                                                                            repeated(22,
+                                                                                                     embedded([ protobuf([string(30,"fum"),double(32,3.1415)]),
+                                                                                                                protobuf([string(30,"bum"),
+                                                                                                                          unsigned(31,27) %%%%%% TODO: signed???
+                                                                                                                         ])
+                                                                                                              ])),
+                                                                                            embedded(23,protobuf([string(43,"more stuff for you")]))
+                                                                                          ]))
+                                                                      ]),
+                                                             protobuf([ embedded(40,
+                                                                                 protobuf([ string(21,"space2b"),
+                                                                                            repeated(23,
+                                                                                                     embedded([ protobuf([string(43,"this")]),
+                                                                                                                protobuf([string(43,"is")]),
+                                                                                                                protobuf([string(43,"embedded")]),
+                                                                                                                protobuf([string(43,"also")])
+                                                                                                              ]))
+                                                                                          ]))
+                                                                      ]),
+                                                             protobuf([string(43,"to")]),
+                                                             protobuf([string(43,"you")])
+                                                           ]))
+                                       ])
+                            ]))
+                 ]).
+
 test_xml(X, Y) :-
     Proto = protobuf([repeated(20, xml_element(X))]),
     protobuf_message(Proto, Y).
@@ -303,16 +338,22 @@ test_xml(X, Y) :-
 %! test_xml(-WireCodes:list(int)) is det.
 % Tests outputting the data defined by xml_proto/1.
 % =WireCodes= is a list of codes to be output
-test_xml(['XmlProto'=XmlProto, 'WireCodes'=WireCodes]) :-
+test_xml(['XmlProto'=XmlProto, 'WireCodes'=WireCodes, 'Segments'=Segments, 'Template'=Template]) :-
     xml_proto(XmlProto),
     test_xml(XmlProto, WireCodes),
     test_xml(XmlProto2, WireCodes),
-    XmlProto == XmlProto2.
+    XmlProto == XmlProto2,
+    protobuf_segment_message(Segments, WireCodes),
+    % segments_to_template(Segments, T0), print_term(T0, [right_margin(160)]), nl,
+    xml_protobuf(Template),
+    protobuf_message(Template, WireCodes).
 
 test_xml :-
-    test_xml(['XmlProto'=XmlProto, 'WireCodes'=WireCodes]),
-    print_term('XmlProto'=XmlProto, []), nl,
-    format('~q~n', ['WireCodes'=WireCodes]).
+    test_xml(['XmlProto'=XmlProto, 'WireCodes'=WireCodes, 'Segments'=Segments, 'Template'=Template]),
+    print_term('XmlProto'=XmlProto, [right_margin(160)]), nl,
+    print_term('Segments'=Segments, [right_margin(160)]), nl,
+    format('WireCodes:~n~q~n', [WireCodes]),
+    print_term('Template'=Template, [right_margin(160)]), nl.
 
 %! test_segment_messages is det.
 % Tests round-trip of segment_protobuf_segment_message/2,
@@ -329,6 +370,18 @@ test_segment_messages :-
     length(MessageSegments, MessageSegmentsLen),
     format('test_segment_messages succeeded with ~d segment(s) in the message.~n', [MessageSegmentsLen]),
     % Don't print it out in all its glory because it's rather long.
-    true. % print_term(Segments, [tab_width(0), right_margin(88)]), nl.
+    true. % print_term(Segments, [indent_arguments(4), tab_width(0), right_margin(88)]), nl.
+
+
+% A simple predicate to help in converting segments to a template.
+segments_to_template(Segments, protobuf(Templates)) :-
+    maplist(segment_to_template, Segments, Templates).
+
+segment_to_template(message(Tag, Fields), embedded(Tag, protobuf(Templates))) :-
+    maplist(segment_to_template, Fields, Templates).
+segment_to_template(string(Tag, String), string(Tag, String)).
+segment_to_template(fixed64(Tag, Codes), fixed64(Tag, Codes)).
+segment_to_template(fixed32(Tag, Codes), fixed32(Tag, Codes)).
+segment_to_template(varint(Tag, Int), varint(Tag, Int)).
 
 precompile_commands.  % Trigger the term-expansion precompilation

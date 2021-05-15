@@ -586,7 +586,7 @@ my_message_sequence(xml_element,
                        repeated(22, kv_pair(Attributes)),
                        repeated(23, aux_xml_element(Contents))]).
 
-my_message_sequence(aux_xml_element,  Contents, Proto) :-
+my_message_sequence(aux_xml_element, Contents, Proto) :-
     functor(Contents, element, 3),
     Proto = protobuf([xml_element(40, Contents)]).
 
