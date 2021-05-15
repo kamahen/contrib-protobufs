@@ -70,7 +70,7 @@ command2_item(Item, MustBe, Items) :-
 
 test_basic_usage :-
     forall(test_basic_usage(Term),
-           ( print_term(Term, [indent_arguments(4)]), nl )).
+           (   print_term(Term, [right_margin(150)]), nl )).
 
 test_basic_usage(['X'=X,
                   'X2'=X2,
@@ -170,7 +170,7 @@ send_command(Command, Vector, WireCodes) :-
 test_send_command :-
     test_send_command(WireCodes),
     protobuf_segment_message(Seg, WireCodes),
-    print_term(Seg, [indent_arguments(4)]), nl.
+    print_term(Seg, [right_margin(80)]), nl.
 
 test_send_command(WireCodes) :-
     send_command(square, double([1,22,3,4]), WireCodes).
@@ -178,7 +178,7 @@ test_send_command(WireCodes) :-
 test_send_precompiled_command :-
     test_send_precompiled_command(WireCodes),
     protobuf_segment_message(Seg, WireCodes),
-    print_term(Seg, [indent_arguments(4)]), nl.
+    print_term(Seg, [right_margin(80)]), nl.
 
 test_send_precompiled_command(WireCodes) :-
     send_precompiled_command(square, double([1,22,3,4]), WireCodes).
