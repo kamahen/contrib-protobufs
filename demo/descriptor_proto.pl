@@ -250,7 +250,8 @@ print_term_cleaned(Term, Options, TermStr) =>
             string(TermStr0),
             (current_output(TermStream),
              print_term(Term, [output(TermStream)|Options]))),
-    re_replace(" +\n"/g, "\n", TermStr0, TermStr).
+    re_replace(" +\n"/g, "\n", TermStr0, TermStr1),
+    re_replace("\t"/g, "        ", TermStr1, TermStr).
 
 %! term_expansion(+Term, -Expansion) is semidet.
 % Term expansion for =|descriptor_proto(Proto)|=.
