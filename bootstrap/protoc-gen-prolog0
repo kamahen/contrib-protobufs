@@ -11,34 +11,30 @@ This program must be named protoc-gen-prolog and must be in the PATH
 when protoc is run.
 """
 
-# This file was formatted with:         yapf  -i protoc-gen-prolog
-# Although this also does a decent job: black -S protoc-gen-prolog
+# This file was formatted with:         yapf  -i protoc-gen-prolog0
+# Although this also does a decent job: black -S protoc-gen-prolog0
 
-# TODO: change to PrologScript (https://www.swi-prolog.org/pldoc/man?section=plscript):
-#       #!/usr/bin/env swipl
-#       :- initialization(main, main).
-#       main(Argv) :-
-#           format(user_error, 'ARGV: ~q~n', [Argv]).
+# TODO: delete this code and replace with Prolog code
 
 from collections import namedtuple
 import sys
-import plugin_pb2
-import descriptor_pb2  # Don't actually need this - it's implicitly available from plugin_pb2
+from google.protobuf.compiler import plugin_pb2
+from google.protobuf import descriptor_pb2  # Don't actually need this - it's implicitly available from plugin_pb2
 
 ReqVersion = namedtuple('ReqVersion', ['major', 'minor', 'patch'])
 
 
 def main():
-    print('ARGV:', sys.argv, file=sys.stderr)
+    result = []
+    result += [f'ARGV: {sys.argv}']
     request = plugin_pb2.CodeGeneratorRequest()
     # sys.stdin.buffer is binary
     request.ParseFromString(sys.stdin.buffer.read())
     version = request.compiler_version
-    print(
-        'Compiler version:',
-        f'{version.major}.{version.minor}.{version.patch}{version.suffix}',
-        file=sys.stderr,
-    )
+    result += [
+        f'Compiler version: '
+        f'{version.major}.{version.minor}.{version.patch}{version.suffix}'
+    ]
     req_version = ReqVersion(major=3, minor=6, patch=1)  # from Ubuntu PPA
     assert (version.major > req_version.major
             or (version.major == req_version.major
@@ -51,7 +47,7 @@ def main():
     # so delete its contents (source_code_info.location):
     for pf in request.proto_file:
         del pf.source_code_info.location[:]
-    print(request, file=sys.stderr)
+    result += [f'{request}']
 
     response = plugin_pb2.CodeGeneratorResponse(
         # error = "Not yet implemented",
@@ -61,9 +57,10 @@ def main():
     for ftg in request.file_to_generate:
         assert ftg.endswith('.proto')
         ftb_base = ftg[:-len('.proto')]
+        result += [f'% Protobuf for "{ftg}" (base "{ftb_base}")']
         f = response.File(
-            name=ftb_base + '_pb.pl',
-            content=f'% Protobuf for "{ftg}" (base "{ftb_base}")\n',
+            name=ftb_base + '_pb0.pl',
+            content='\n'.join(result) + '\n',
         )
         # The inputs are in toplogically-sorted order, which may need
         # to be processed; but only those within
