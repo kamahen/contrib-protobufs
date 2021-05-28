@@ -53,11 +53,14 @@ RM=rm -f
 # PROTOC=$(shell which protoc)
 # PROTOC=protoc
 #  Requires having done "make" in ~/src/protobufs:
-PROTOC:=$(realpath ../../../../protobuf/src/protoc)
+PROTOC:=$(realpath $(HOME)/src/protobuf/src/protoc)
 # Requires having LD_LIBRARY_PATH=$(realpath ../../../../protobuf/src/.libs):
-# PROTOC:=$(realpath ../../../../protobuf/src/.libs/protoc)
+# PROTOC:=$(realpath $(HOME)/src/protobuf/src/.libs/protoc)
 
 PROTOC_I=-I. -I$(SRC_PROTOBUF)/src -I$(SRC_PROTOBUF)/src/google/protobuf -I$(SRC_PROTOBUF)/src/google/protobuf/compiler
+
+all: plugin.proto.wiredump plugin.proto.wire plugin.proto.parse plugin.proto.segment \
+	descriptor.proto.wiredump descriptor.proto.wire descriptor.proto.parse descriptor.proto.segment
 
 # Protobuf code generator for Python  # TODO: delete when no longer needed
 
@@ -116,7 +119,7 @@ descriptor.proto.wirerawdump: descriptor.proto.wire
 clean:
 	@# TODO: special handling for descriptor.* files
 	$(RM) -r foo *.tmp *.o *.pb.cc *.pb.h *_pb2.py doc/ ../TAGS \
-		*.proto.wire *.proto.wirerawdump *.proto.wiredump descriptor.proto.parse
+		*.proto.wire *.proto.wirerawdump *.proto.wiredump *.proto.parse *.proto.segment
 	git clean -ndxf  # Should find nothing.
 
 # For testing: this is what the build does:
