@@ -1,0 +1,8 @@
+#!/usr/bin/env swipl
+% -*- mode: prolog -*-
+
+:- initialization(main, main).
+
+main(Argv) :-
+    format(user_error, 'ARGV: ~q~n', [Argv]),
+    halt.

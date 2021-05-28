@@ -124,7 +124,7 @@ clean:
 	$(RM) -r foo *.tmp *.o *.pb.cc *.pb.h *_pb2.py *_pb.pl *_pb0.pl doc/ ../TAGS \
 		*.proto.wire *.proto.wirerawdump *.proto.wiredump *.proto.parse \
 		google/protobuf/compiler/plugin_pb2.py google/protobuf/descriptor_pb2.py
-	rmdir -p google/protobuf/compiler
+	-rmdir -p google/protobuf/compiler
 	git clean -ndxf  # Should find nothing.
 
 # For testing: this is what the build does:
