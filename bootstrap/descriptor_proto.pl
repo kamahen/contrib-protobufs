@@ -3331,4 +3331,3 @@ proto_message_type(          '.google.protobuf.compiler.CodeGeneratorResponse.Fi
   proto_enum_value(          '.google.protobuf.compiler.CodeGeneratorResponse.Feature'                  ,'FEATURE_PROTO3_OPTIONAL',1).
 
 end_of_file.
-
