@@ -34,7 +34,7 @@
     protobufs:enum_value/3.
 
 protobufs:package('.google.protobuf',
-              'google/protobuf/descriptor.proto',
+              'descriptor.proto',
               'FileOptions'{ cc_enable_arenas:true,
                              csharp_namespace:'Google.Protobuf.Reflection',
                              go_package:'google.golang.org/protobuf/types/descriptorpb',
