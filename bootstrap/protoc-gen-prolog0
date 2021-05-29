@@ -62,7 +62,7 @@ def main():
             name=ftb_base + '_pb0.pl',
             content='\n'.join(result) + '\n',
         )
-        # The inputs are in toplogically-sorted order, which may need
+        # The inputs are in topologically-sorted order, which may need
         # to be processed; but only those within
         # request.file_to_generate should be output. It is OK for the
         # generated code to contain an "import" where the .proto file
