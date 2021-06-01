@@ -51,14 +51,14 @@ swipl_examples(
 swipl_examples(
                interop/Makefile
                interop/README.md
-               interop/scalar_test_common.pl
-               interop/scalar_test.proto
-               interop/scalar_test_read.cc
-               interop/scalar_test_read.pl
-               interop/scalar_test_read.py
-               interop/scalar_test_write.cc
-               interop/scalar_test_write.pl
-               interop/scalar_test_write.py
+               interop/test_common.pl
+               interop/test.proto
+               interop/test_read.cc
+               interop/test_read.pl
+               interop/test_read.py
+               interop/test_write.cc
+               interop/test_write.pl
+               interop/test_write.py
                SUBDIR interop
               )
 
