@@ -221,18 +221,18 @@ in some of the interoperability tests.)
     8. Prolog =|boolean(Tag,false)|= maps to 0 and
        =|boolean(Tag,true)|= maps to 1.
     9. Uses "zig-zag" encoding, which is more space-efficient for
-       negative numbers
-   10. The documentation says that this doesn't use "zig-zag"
+       negative numbers.
+    0. The documentation says that this doesn't use "zig-zag"
        encoding, so it's less space-efficient for negative numbers.
        In particular, both C++ and Python encode negative numbers as
        10 bytes, and Prolog follows this for wire-stream compatibility
        (note that SWI-Prolog typically uses 64-bit integers anyway).
        Therefore, signed64 is used for both .proto types =int32= and
        =int64=.
-   11. =integer32= and =integer64= are not checked for negative values;
+    1. =integer32= and =integer64= are not checked for negative values;
        if you use a negative value, it will be treated as the 2s complement
        (this is the same as C++ behavior; Python throws an exception).
-   12. Specified as =|repeated_embedded(Tag,protobuf([...]),Fields)|=
+    2. Specified as =|repeated_embedded(Tag,protobuf([...]),Fields)|=
 
 ## Tags (field numbers) {#protobufs-tags}
 
@@ -373,6 +373,14 @@ with tag 22 into a list as above.  Likewise, all the items listed in the
 second clause will be  encoded  in   the  wire-stream  according  to the
 mapping defined in an enumeration   (described below) tank_state/2, each
 with tag 23.
+
+You can also encode vectors of embedded messages using =repeated_embedded=.
+This uses a "template" for the individual messages and a list of messages
+in the wire stream.
+For example: =|repeated_embedded(Tag, protobuf([string(1,_Key),string(2,_Value)]), Fields)|=
+where =Fields= gets a list (possibly empty), with each item of the form
+=|protobuf([string(1,_Key),string(2,_Value)])|=.
+
 
 *|Notes:|*
 
