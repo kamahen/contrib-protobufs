@@ -103,12 +103,12 @@ def main():
         f.write(m0.SerializeToString())
 
     m1 = M1(v_key_value=[KeyValue(key="foo", value="bar"), KeyValue(key="x", value="y")])
-    print('m1:', m1)
+    # print('m1:', m1)
     with open("m1.wire", "wb") as f:
         f.write(m1.SerializeToString())
 
     m2 = M2(v_key_value=KeyValue(key="foo", value="bar"))
-    print('m2:', m2)
+    # print('m2:', m2)
     with open("m2.wire", "wb") as f:
         f.write(m2.SerializeToString())
 

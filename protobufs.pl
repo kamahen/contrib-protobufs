@@ -166,30 +166,30 @@ protobuf_var_int(X, [A | Rest], Rest1) :-
     X is (X1 << 7) + A - 128,
     !.
 
-%! protobuf_tag_type(?Tag:int, ?Type:atom, ?Rest, Rest1) is det.
-% Conversion between Tag (number) + Type and list of codes.
+%! protobuf_tag_type(?Tag:int, ?WireType:atom)// is det.
+% Conversion between Tag (number) + WireType and wirestream codes.
 % This is a low-level predicate; normally, you should use
 % template_message/2 and the appropriate template term.
 % @arg Tag The item's tag (field number)
-% @arg Type The item's type (see prolog_type//2)
-% @arg Rest, @arg Rest1 DCG difference list
-protobuf_tag_type(Tag, Type, Rest, Rest1) :-
-    nonvar(Tag), nonvar(Type),
-    wire_type(Type, X),
-    A is Tag << 3 \/ X,
+% @arg WireType The item's wire type (see prolog_type//2 for how to
+%               convert this to a Prolog type)
+protobuf_tag_type(Tag, WireType, Rest, Rest1) :-
+    nonvar(Tag), nonvar(WireType),
+    wire_type(WireType, WireTypeEncoding),
+    A is Tag << 3 \/ WireTypeEncoding,
     protobuf_var_int(A, Rest, Rest1),
     !.
-protobuf_tag_type(Tag, Type, Rest, Rest1) :-
+protobuf_tag_type(Tag, WireType, Rest, Rest1) :-
     protobuf_var_int(A, Rest, Rest1),
-    X is A /\ 0x07,
-    wire_type(Type, X),
+    WireTypeEncoding is A /\ 0x07,
+    wire_type(WireType, WireTypeEncoding),
     Tag is A >> 3.
 
-%! prolog_type(?Tag:int, ?Type:atom) is semidet.
-% Convert between Tag (field number) + Type and list of codes.
+%! prolog_type(?Tag:int, ?PrologType:atom)// is semidet.
+% Match Tag (field number) + PrologType.
 % When Type is a variable, backtracks through all the possibilities
 % for a given wire encoding.
-% Note that 'repeated' isn't here because it's handled by message_sequence//3.
+% Note that 'repeated' isn't here because it's handled by single_message//3.
 % See also segment_type_tag/3.
 prolog_type(Tag, double) -->     protobuf_tag_type(Tag, fixed64).
 prolog_type(Tag, integer64) -->  protobuf_tag_type(Tag, fixed64).
@@ -219,43 +219,44 @@ enumeration(Type) -->
     { call(Type, Value) },
     payload(unsigned, Value).
 
+%! payload(?PrologType, ?Payload) is det.
+% Process the codes into =Payload=, according to =PrologType=
 % TODO: payload//2 "mode" is sometimes module-sensitive, sometimes not.
 %       payload(enum, A)// has A as a callable
 %       all other uses of payload//2, the 2nd arg is not callable.
 %     - This confuses check/0; it also makes defining an enumeration
 %       more difficult because it has to be defined in module protobufs
 %       (see vector_demo.pl, which defines protobufs:commands/2)
-
-payload(enum, A) -->
-    enumeration(A).
-payload(double, A) -->
-    fixed_float64(A).
-payload(integer64, A) -->
-    fixed_int64(A).
-payload(float, A) -->
-    fixed_float32(A).
-payload(integer32, A) -->
-    fixed_int32(A).
-payload(integer, A) -->
-    { nonvar(A), integer_zigzag(A,X) },
+payload(enum, Payload) -->
+    enumeration(Payload).
+payload(double, Payload) -->
+    fixed_float64(Payload).
+payload(integer64, Payload) -->
+    fixed_int64(Payload).
+payload(float, Payload) -->
+    fixed_float32(Payload).
+payload(integer32, Payload) -->
+    fixed_int32(Payload).
+payload(integer, Payload) -->
+    { nonvar(Payload), integer_zigzag(Payload, X) },
     !,
     protobuf_var_int(X).
-payload(integer, A) -->
+payload(integer, Payload) -->
     protobuf_var_int(X),
-    { integer_zigzag(A, X) }.
-payload(unsigned, A) -->
-    % TODO: replace payload(unsigned, A) with this (needs unit tests +
+    { integer_zigzag(Payload, X) }.
+payload(unsigned, Payload) -->
+    % TODO: replace payload(unsigned, Payload) with this (needs unit tests +
     %       comparison with Python,C++):
-    %   payload(unsigned, A) -->
-    %       protobuf_var_int(A),
-    %       { A >= 0 }.
-    {   nonvar(A)
-    ->  A >= 0
+    %   payload(unsigned, Payload) -->
+    %       protobuf_var_int(Payload),
+    %       { Payload >= 0 }.
+    {   nonvar(Payload)
+    ->  Payload >= 0
     ;   true
     },
-    protobuf_var_int(A).
-payload(signed32, A) --> % signed32 is not defined by prolog_type//2
-                         % for wire-stream compatibility reasons.
+    protobuf_var_int(Payload).
+payload(signed32, Payload) --> % signed32 is not defined by prolog_type//2
+                               % for wire-stream compatibility reasons.
 %     % signed32 ought to write 5 bytes for negative numbers, but both
 %     % the C++ and Python implementations write 10 bytes. For
 %     % wire-stream compatibility, we follow C++ and Python, even though
@@ -264,88 +265,88 @@ payload(signed32, A) --> % signed32 is not defined by prolog_type//2
 %     % getting the sign extension correct with some 32/64-bit integer
 %     % models.  See CodedOutputStream::WriteVarint32SignExtended(int32
 %     % value) in google/protobuf/io/coded_stream.h.  (To write 5 bytes,
-%     % change the "A xor % 0xffffffffffffffff" to "A xor 0xffffffff".)
-      payload(signed64, A).
-payload(signed64, A) -->
+%     % change the "Payload xor % 0xffffffffffffffff" to "Payload xor 0xffffffff".)
+      payload(signed64, Payload).
+payload(signed64, Payload) -->
     % protobuf_var_int//1 cannot handle negative numbers (note that
     % zig-zag encoding always results in a positive number), so
     % compute the 64-bit 2s complement, which is what is produced
     % form C++ and Python.
-    % TODO: \A instead of A xor ...?
-    { var(A) },
+    % TODO: \Payload instead of Payload xor ...?
+    { var(Payload) },
     !,
     protobuf_var_int(X),
     {   X > 0x7fffffffffffffff
-    ->  A is -(X xor 0xffffffffffffffff + 1)
-    ;   A = X
+    ->  Payload is -(X xor 0xffffffffffffffff + 1)
+    ;   Payload = X
     }.
-payload(signed64, A) -->
+payload(signed64, Payload) -->
     % See comment in previous clause about negative numbers.
-    {   nonvar(A), A < 0
-    ->  X is -(A xor 0xffffffffffffffff + 1)
-    ;   X = A
+    {   nonvar(Payload), Payload < 0
+    ->  X is -(Payload xor 0xffffffffffffffff + 1)
+    ;   X = Payload
     },
     protobuf_var_int(X).
-payload(codes, A) -->
-    { nonvar(A), !, length(A, Len)},
+payload(codes, Payload) -->
+    { nonvar(Payload), !, length(Payload, Len)},
     protobuf_var_int(Len),
-    code_string(Len, A).
-payload(codes, A) -->
+    code_string(Len, Payload).
+payload(codes, Payload) -->
     protobuf_var_int(Len),
-    code_string(Len, A).
-payload(utf8_codes, A) -->
-    { nonvar(A),
+    code_string(Len, Payload).
+payload(utf8_codes, Payload) -->
+    { nonvar(Payload),
       !,
-      phrase(utf8_codes(A), B)
+      phrase(utf8_codes(Payload), B)
     },
     payload(codes, B).
-payload(utf8_codes, A) -->
+payload(utf8_codes, Payload) -->
     payload(codes, B),
-    { phrase(utf8_codes(A), B) }.
-payload(atom, A) -->
-    { nonvar(A),
-      atom_codes(A, Codes)
+    { phrase(utf8_codes(Payload), B) }.
+payload(atom, Payload) -->
+    { nonvar(Payload),
+      atom_codes(Payload, Codes)
     },
     payload(utf8_codes, Codes),
     !.
-payload(atom, A) -->
+payload(atom, Payload) -->
     payload(utf8_codes, Codes),
-    { atom_codes(A, Codes) }.
+    { atom_codes(Payload, Codes) }.
 payload(boolean, true) -->
     payload(unsigned, 1).
 payload(boolean, false) -->
     payload(unsigned, 0).
-payload(string, A) -->
-    {   nonvar(A)
-    ->  string_codes(A, Codes)
+payload(string, Payload) -->
+    {   nonvar(Payload)
+    ->  string_codes(Payload, Codes)
     ;   true
     },
     % string_codes produces a list of unicode, not bytes
     payload(utf8_codes, Codes),
-    { string_codes(A, Codes) }.
-payload(embedded, protobuf(A)) -->
-    { ground(A),
-      phrase(protobuf(A), Codes)
+    { string_codes(Payload, Codes) }.
+payload(embedded, protobuf(PayloadSeq)) -->
+    { ground(PayloadSeq),
+      phrase(protobuf(PayloadSeq), Codes)
     },
     payload(codes, Codes),
     !.
-payload(embedded, protobuf(A)) -->
+payload(embedded, protobuf(PayloadSeq)) -->
     payload(codes, Codes),
-    { phrase(protobuf(A), Codes) }.
-payload(packed, Compound) -->
-    { Compound =.. [Type, A],
-      ground(A),
-      phrase(packed_payload(Type, A), Codes)
+    { phrase(protobuf(PayloadSeq), Codes) }.
+payload(packed, TypedPayloadSeq) -->
+    { TypedPayloadSeq =.. [Type, PayloadSeq],  % TypedPayloadSeq = Type(PayloadSeq)
+      ground(PayloadSeq),
+      phrase(packed_payload(Type, PayloadSeq), Codes)
     },
     payload(codes, Codes),
     !.
-payload(packed, Compound) -->
+payload(packed, TypedPayloadSeq) -->
     payload(codes, Codes),
-    { Compound =.. [Type, A] },
-    { phrase(packed_payload(Type, A), Codes) }.
+    { TypedPayloadSeq =.. [Type, PayloadSeq] },  % TypedPayloadSeq = Type(PayloadSeq)
+    { phrase(packed_payload(Type, PayloadSeq), Codes) }.
 
-packed_payload(Type, Codes) -->
-    sequence(payload(Type), Codes).
+packed_payload(Type, PayloadSeq) -->
+    sequence(payload(Type), PayloadSeq).
 
 start_group(Tag) --> protobuf_tag_type(Tag, start_group).
 
@@ -354,50 +355,53 @@ end_group(Tag) -->   protobuf_tag_type(Tag, end_group).
 %
 nothing([]) --> [], !.
 
-protobuf([A | B]) -->
-    { A =.. [ Type, Tag, Payload] },
-    % { format('SEQ ~q~n', [[Type,Tag]]) },  % DO NOT SUBMIT
-    % { Tag == 11016 -> gtrace ; true },
-    message_sequence(Type, Tag, Payload),
+protobuf([Field | Fields]) -->
+    (   { Field = repeated_embedded(Tag, protobuf(EmbeddedFields), Items) }
+    ->  repeated_embedded_messages(Tag, EmbeddedFields, Items)
+    ;   { Field =.. [ Type, Tag, Payload] },  % Field = Type(Tag, Payload)
+        single_message(Type, Tag, Payload)
+    ),
     !,
-    (   protobuf(B)
-    ;   nothing(B)
+    (   protobuf(Fields)
+    ;   nothing(Fields)
     ).
 
-repeated_message_sequence(repeated_enum, Tag, Type, [A | B]) -->
-    { Compound =.. [Type, A] },
-    message_sequence(enum, Tag, Compound),
-    (   repeated_message_sequence(repeated_enum, Tag, Type, B)
+repeated_message(repeated_enum, Tag, Type, [A | B]) -->
+    { TypedPayload =.. [Type, A] },  % TypedPayload = Type(A)
+    single_message(enum, Tag, TypedPayload),
+    (   repeated_message(repeated_enum, Tag, Type, B)
     ;   nothing(B)
     ).
-repeated_message_sequence(Type, Tag, [A | B]) -->
-    message_sequence(Type, Tag, A),
-    repeated_message_sequence(Type, Tag, B).
-repeated_message_sequence(_Type, _Tag, A) -->
+repeated_message(Type, Tag, [A | B]) -->
+    { Type \= repeated_enum },
+    single_message(Type, Tag, A),
+    repeated_message(Type, Tag, B).
+repeated_message(_Type, _Tag, A) -->
     nothing(A).
 
-% repeated_message_sequence_bag(Tag, ResultTemplate, Type, [A | B]) -->
-%     { format('BAG: ~q~n', [repeated_message_sequence_bag(tag=Tag, result=ResultTemplate, type=Type, [A | B])]) },
-%     { copy_term(ResultTemplate-Type, NewResultTemplate-NewType) },
-%     message_sequence(NewType, Tag, A),
-%     (   repeated_message_sequence_bag(Tag, ResultTemplate, Type, B)
-%     ;   nothing(B)
-%     ).
+repeated_embedded_messages(Tag, EmbeddedFields, [protobuf(A) | B]) -->
+    { copy_term(EmbeddedFields, A) },
+    single_message(embedded, Tag, protobuf(A)),
+    (   repeated_embedded_messages(Tag, EmbeddedFields, B)
+    ;   nothing(B)
+    ).
 
-message_sequence(repeated, Tag, enum(Compound)) -->
-    { Compound =.. [Type, List] },
-    repeated_message_sequence(repeated_enum, Tag, Type, List).
-% message_sequence(repeated, Tag, embedded(ResultTemplate, Type, List)) -->
-%     repeated_message_sequence_bag(Tag, ResultTemplate, Type, List).
-message_sequence(repeated, Tag, Compound) -->
-    { Compound =.. [Type, A] },
-    repeated_message_sequence(Type, Tag, A).
-message_sequence(group, Tag, A) -->
+%! single_message(+Type, ?Tag, ?Payload)// is det.
+% Processes a single messages (e.g., one item in the list in protobuf([...]).
+% The Type, Tag, Payload are from Field =.. [Type, Tag, Payload]
+single_message(repeated, Tag, enum(Payload)) -->
+    { Payload =.. [EnumType, Value] },  % Payload = EnumType(Value)
+    repeated_message(repeated_enum, Tag, EnumType, Value).
+single_message(repeated, Tag, Payload) -->
+    { Payload =.. [Type, A] },  % Payload = Type(A)
+    { Type \= enum },
+    repeated_message(Type, Tag, A).
+single_message(group, Tag, A) -->
     start_group(Tag),
     protobuf(A),
-    end_group(Tag),
-    !.
-message_sequence(PrologType, Tag, Payload) -->
+    end_group(Tag).
+single_message(PrologType, Tag, Payload) -->
+    { PrologType \= repeated, PrologType \= group },
     prolog_type(Tag, PrologType),
     payload(PrologType, Payload).
 
@@ -537,7 +541,7 @@ segment_type_tag(end_group(Tag),               end_group,        Tag).
 segment_type_tag(fixed32(Tag,_Codes),          fixed32,          Tag).
 segment_type_tag(length_delimited(Tag,_Codes), length_delimited, Tag).
 segment_type_tag(message(Tag,_Segments),       length_delimited, Tag).
-segment_type_tag(packed(Tag,_Compound),        length_delimited, Tag).
+segment_type_tag(packed(Tag,_Payload),         length_delimited, Tag).
 segment_type_tag(string(Tag,_String),          length_delimited, Tag).
 
 segment(varint, Tag, varint(Tag,Value)) -->
@@ -571,7 +575,7 @@ length_delimited_segment(message(Tag,Segments), Tag, Codes) :-
         % message shouldn't contain them.
         % TODO: A more precise check would be that
         % start_group(Tag)/end_group(Tag) appear properly nested, as
-        % in message_sequence(group, Tag, A).
+        % in single_message(group, Tag, A).
         \+ memberchk(start_group(_), Segments),
         \+ memberchk(end_group(_), Segments)
     ;   protobuf_segment_message(Segments, Codes)
@@ -583,7 +587,7 @@ length_delimited_segment(string(Tag,String), Tag, Codes) :-
     ;   phrase(utf8_codes(StringCodes), Codes),
         string_codes(String, StringCodes)
     ).
-length_delimited_segment(packed(Tag,Compound), Tag, Codes) :-
+length_delimited_segment(packed(Tag,Payload), Tag, Codes) :-
     % We don't know the type of the fields, so we try the 3
     % possibilities.  This has a problem: an even number of fixed32
     % items can't be distinguished from half the number of fixed64
@@ -591,7 +595,7 @@ length_delimited_segment(packed(Tag,Compound), Tag, Codes) :-
     % varint (possibly with zig-zag encoding) is more common because
     % it's more compact (I don't know whether 32-bit or 64-bit is more
     % common for floating point).
-    packed_option(Type, Items, Compound),
+    packed_option(Type, Items, Payload),
     phrase(sequence(payload(Type), Items), Codes).
 length_delimited_segment(length_delimited(Tag,Codes), Tag, Codes).
 

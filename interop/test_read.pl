@@ -10,35 +10,6 @@
 % Not needed because we're using plunit:
 % :- set_prolog_flag(optimise_debug, false). % ensure assertion/1 is executed
 
-t0 :-
-    Template = protobuf([repeated(1, enum(my_enum(V_enum)))]),
-    read_file_to_codes('m0.wire', WireStream, [encoding(octet),type(binary)]),
-    format('m0.wire: ~q~n', [WireStream]),
-    protobuf_message(Template, WireStream),
-    print_term(Template, []),nl,
-    print_term(enum=V_enum, []),nl.
-
-t1 :-
-    % T1 = protobuf([embedded(12, protobuf([string(15,Key),string(128,Value)]))]),
-    Template = protobuf([repeated(12,
-                                  embedded(Key-Value,
-                                           protobuf([string(15,Key),string(128,Value)]),
-                                           KeyValueList)
-                                 )]),
-    read_file_to_codes('m1.wire', WireStream, [encoding(octet),type(binary)]),
-    format('m1.wire: ~q~n', [WireStream]),
-    protobuf_message(Template, WireStream),
-    print_term(Template, []),nl,
-    print_term(list=KeyValueList, []),nl.
-
-t2 :-
-    Template = protobuf([embedded(5, protobuf([string(15,Key),string(128,Value)]))]),
-    read_file_to_codes('m2.wire', WireStream, [encoding(octet),type(binary)]),
-    format('m2.wire: ~q~n', [WireStream]),
-    protobuf_message(Template, WireStream),
-    print_term(Template, []),nl,
-    print_term([key=Key,value=Value], []),nl.
-
 test_read_main :-
     run_tests.
 
