@@ -370,6 +370,12 @@ payload(packed, TypedPayloadSeq) -->
     },
     payload(codes, Codes),
     !.
+payload(packed, enum(EnumSpec)) -->
+    !,
+    % TODO: combine with next clause
+    { EnumSpec =.. [ Enum, Values ] }, % EnumSpec = Enum(Values)
+    payload(codes, Codes),
+    { phrase(packed_enum(Enum, Values), Codes) }.
 payload(packed, TypedPayloadSeq) -->
     payload(codes, Codes),
     { TypedPayloadSeq =.. [PrologType, PayloadSeq] },  % TypedPayloadSeq = PrologType(PayloadSeq)
@@ -377,6 +383,12 @@ payload(packed, TypedPayloadSeq) -->
 
 packed_payload(PrologType, PayloadSeq) -->
     sequence(payload(PrologType), PayloadSeq).
+
+packed_enum(Enum, [ A | As ]) -->
+    { E =.. [Enum, A] },
+    payload(enum, E),
+    packed_enum(Enum, As).
+packed_enum(_EnumSpec, []) --> [ ].
 
 start_group(Tag) --> protobuf_tag_type(Tag, start_group).
 
@@ -386,7 +398,7 @@ end_group(Tag) -->   protobuf_tag_type(Tag, end_group).
 nothing([]) --> [], !.
 
 protobuf([Field | Fields]) -->
-    % TODO: don't use =.. -- move logic to single_message DO NOT SUBMIT
+    % TODO: don't use =.. -- move logic to single_message
     (   { Field = repeated_embedded(Tag, protobuf(EmbeddedFields), Items) }
     ->  repeated_embedded_messages(Tag, EmbeddedFields, Items)
     ;   { Field =.. [ PrologType, Tag, Payload] },  % Field = PrologType(Tag, Payload)
@@ -421,9 +433,9 @@ repeated_embedded_messages(_Tag, _EmbeddedFields, []) -->
 % Processes a single messages (e.g., one item in the list in protobuf([...]).
 % The PrologType, Tag, Payload are from Field =.. [PrologType, Tag, Payload]
 % in the caller
-single_message(repeated, Tag, enum(Payload)) -->
-    { Payload =.. [EnumType, Value] },  % Payload = EnumType(Value)
-    repeated_message(repeated_enum, Tag, EnumType, Value).
+single_message(repeated, Tag, enum(EnumSpec)) -->
+    { EnumSpec =.. [EnumType, Values] },  % EnumSpec = EnumType(Values)
+    repeated_message(repeated_enum, Tag, EnumType, Values).
 single_message(repeated, Tag, Payload) -->
     { Payload =.. [PrologType, A] },  % Payload = PrologType(A)
     { PrologType \= enum },
