@@ -193,8 +193,10 @@ protobuf_tag_type(Tag, WireType, Rest, Rest1) :-
 % See also segment_type_tag/3.
 prolog_type(Tag, double) -->     protobuf_tag_type(Tag, fixed64).
 prolog_type(Tag, integer64) -->  protobuf_tag_type(Tag, fixed64).
+prolog_type(Tag, unsigned64) --> protobuf_tag_type(Tag, fixed64).
 prolog_type(Tag, float) -->      protobuf_tag_type(Tag, fixed32).
 prolog_type(Tag, integer32) -->  protobuf_tag_type(Tag, fixed32).
+prolog_type(Tag, unsigned32) --> protobuf_tag_type(Tag, fixed32).
 prolog_type(Tag, integer) -->    protobuf_tag_type(Tag, varint).
 prolog_type(Tag, unsigned) -->   protobuf_tag_type(Tag, varint).
 %                signed32  - omitted for wire-stream compabitility
@@ -233,10 +235,38 @@ payload(double, Payload) -->
     fixed_float64(Payload).
 payload(integer64, Payload) -->
     fixed_int64(Payload).
+payload(unsigned64, Payload) -->
+    { var(Payload) },
+    !,
+    fixed_int64(X),
+    {   X < 0
+    ->  Payload is -(X xor 0xffffffffffffffff + 1)
+    ;   Payload = X
+    }.
+payload(unsigned64, Payload) -->
+    {   nonvar(Payload), Payload < 0
+    ->  X is -(Payload xor 0xffffffffffffffff + 1)
+    ;   X = Payload
+    },
+    fixed_int64(X).
 payload(float, Payload) -->
     fixed_float32(Payload).
 payload(integer32, Payload) -->
     fixed_int32(Payload).
+payload(unsigned32, Payload) -->
+    { var(Payload) },
+    !,
+    fixed_int32(X),
+    {   X < 0
+    ->  Payload is -(X xor 0xffffffff + 1)
+    ;   Payload = X
+    }.
+payload(unsigned32, Payload) -->
+    {   nonvar(Payload), Payload < 0
+    ->  X is -(Payload xor 0xffffffff + 1)
+    ;   X = Payload
+    },
+    fixed_int32(X).
 payload(integer, Payload) -->
     { nonvar(Payload), integer_zigzag(Payload, X) },
     !,
@@ -334,19 +364,19 @@ payload(embedded, protobuf(PayloadSeq)) -->
     payload(codes, Codes),
     { phrase(protobuf(PayloadSeq), Codes) }.
 payload(packed, TypedPayloadSeq) -->
-    { TypedPayloadSeq =.. [Type, PayloadSeq],  % TypedPayloadSeq = Type(PayloadSeq)
+    { TypedPayloadSeq =.. [PrologType, PayloadSeq],  % TypedPayloadSeq = PrologType(PayloadSeq)
       ground(PayloadSeq),
-      phrase(packed_payload(Type, PayloadSeq), Codes)
+      phrase(packed_payload(PrologType, PayloadSeq), Codes)
     },
     payload(codes, Codes),
     !.
 payload(packed, TypedPayloadSeq) -->
     payload(codes, Codes),
-    { TypedPayloadSeq =.. [Type, PayloadSeq] },  % TypedPayloadSeq = Type(PayloadSeq)
-    { phrase(packed_payload(Type, PayloadSeq), Codes) }.
+    { TypedPayloadSeq =.. [PrologType, PayloadSeq] },  % TypedPayloadSeq = PrologType(PayloadSeq)
+    { phrase(packed_payload(PrologType, PayloadSeq), Codes) }.
 
-packed_payload(Type, PayloadSeq) -->
-    sequence(payload(Type), PayloadSeq).
+packed_payload(PrologType, PayloadSeq) -->
+    sequence(payload(PrologType), PayloadSeq).
 
 start_group(Tag) --> protobuf_tag_type(Tag, start_group).
 
@@ -356,15 +386,16 @@ end_group(Tag) -->   protobuf_tag_type(Tag, end_group).
 nothing([]) --> [], !.
 
 protobuf([Field | Fields]) -->
+    % TODO: don't use =.. -- move logic to single_message DO NOT SUBMIT
     (   { Field = repeated_embedded(Tag, protobuf(EmbeddedFields), Items) }
     ->  repeated_embedded_messages(Tag, EmbeddedFields, Items)
-    ;   { Field =.. [ Type, Tag, Payload] },  % Field = Type(Tag, Payload)
-        single_message(Type, Tag, Payload)
+    ;   { Field =.. [ PrologType, Tag, Payload] },  % Field = PrologType(Tag, Payload)
+        single_message(PrologType, Tag, Payload),
+        (   protobuf(Fields)
+        ;   nothing(Fields)
+        )
     ),
-    !,
-    (   protobuf(Fields)
-    ;   nothing(Fields)
-    ).
+    !.
 
 repeated_message(repeated_enum, Tag, Type, [A | B]) -->
     { TypedPayload =.. [Type, A] },  % TypedPayload = Type(A)
@@ -381,21 +412,22 @@ repeated_message(_Type, _Tag, A) -->
 
 repeated_embedded_messages(Tag, EmbeddedFields, [protobuf(A) | B]) -->
     { copy_term(EmbeddedFields, A) },
-    single_message(embedded, Tag, protobuf(A)),
-    (   repeated_embedded_messages(Tag, EmbeddedFields, B)
-    ;   nothing(B)
-    ).
+    single_message(embedded, Tag, protobuf(A)), !,
+    repeated_embedded_messages(Tag, EmbeddedFields, B).
+repeated_embedded_messages(_Tag, _EmbeddedFields, []) -->
+    [ ].
 
-%! single_message(+Type, ?Tag, ?Payload)// is det.
+%! single_message(+PrologType, ?Tag, ?Payload)// is det.
 % Processes a single messages (e.g., one item in the list in protobuf([...]).
-% The Type, Tag, Payload are from Field =.. [Type, Tag, Payload]
+% The PrologType, Tag, Payload are from Field =.. [PrologType, Tag, Payload]
+% in the caller
 single_message(repeated, Tag, enum(Payload)) -->
     { Payload =.. [EnumType, Value] },  % Payload = EnumType(Value)
     repeated_message(repeated_enum, Tag, EnumType, Value).
 single_message(repeated, Tag, Payload) -->
-    { Payload =.. [Type, A] },  % Payload = Type(A)
-    { Type \= enum },
-    repeated_message(Type, Tag, A).
+    { Payload =.. [PrologType, A] },  % Payload = PrologType(A)
+    { PrologType \= enum },
+    repeated_message(PrologType, Tag, A).
 single_message(group, Tag, A) -->
     start_group(Tag),
     protobuf(A),
@@ -709,6 +741,10 @@ tag_and_codes(Tag, Codes) -->
 % This is a low-level predicate; normally, you should use
 % template_message/2 and the appropriate template term.
 %
+% @bug Throws instantiation error for large values,
+%      e.g. integer_zigzag(A, 18446744073709551600).
+%           (0xfffffffffffffff0)
+%
 % @param Original an integer in the original form
 % @param Encoded the zigzag encoding of =Original=
 
@@ -764,7 +800,7 @@ protobuf_parse_from_codes(WireCodes, MessageType, Term) :-
     maplist(segment_to_term(MessageType), Segments, MsgFields),
     combine_fields(MsgFields, MessageType{}, Term).
 
-% :- det(segment_to_term/3).  % DO NOT SUBMIT
+:- det(segment_to_term/3).
 %! segment_to_term(+ContextType:atom, +Segment, -FieldAndValue) is det.
 % ContextType is the type (name) of the containing message
 % Segment is a segment from protobuf_segment_message/2
@@ -780,7 +816,7 @@ segment_to_term(ContextType0, Segment0, FieldAndValue) =>
     !, % remove choicepoint from convert_segment/2
     FieldAndValue = field_and_value(FieldName,RepeatOptional,Segment).
 
-% :- det(convert_segment/4).  % DO NOT SUBMIT
+% :- det(convert_segment/4).
 %! convert_segment(+Type:atom, +Segment, -Value) is det.
 % Compute an appropriate =Value= from the combination of descriptor
 % "type" (in =Type=) and a =Segment=.
@@ -815,22 +851,28 @@ convert_segment('TYPE_INT32', _ContextType, Segment0, Value) =>
     protobuf_segment_convert(Segment0, Segment), !.
 convert_segment(packed('TYPE_INT32'), _ContextType, Segment0, Values) =>
     protobuf_segment_convert(Segment0, packed(_, varint(Values))).
-% DO NOT SUBMIT - add packed(...) from here on
 convert_segment('TYPE_FIXED64', _ContextType, Segment0, Value) =>
     Segment = fixed64(_Tag,Codes),
     protobuf_segment_convert(Segment0, Segment), !,
     int64_codes(Value, Codes).
 convert_segment(packed('TYPE_FIXED64'), _ContextType, Segment0, Values) =>
     protobuf_segment_convert(Segment0, packed(_, fixed64(Codes))),
-    phrase(packed_payload(integer64, Values), Codes), !. % DO NOT SUBMIT TODO: check integer64
+    phrase(packed_payload(integer64, Values), Codes), !.
 convert_segment('TYPE_FIXED32', _ContextType, Segment0, Value) =>
     Segment = fixed32(_Tag,Codes),
     protobuf_segment_convert(Segment0, Segment), !,
     int32_codes(Value, Codes).
+convert_segment(packed('TYPE_FIXED32'), _ContextType, Segment0, Values) =>
+    protobuf_segment_convert(Segment0, packed(_, fixed32(Codes))),
+    phrase(packed_payload(integer32, Values), Codes), !.
 convert_segment('TYPE_BOOL', _ContextType, Segment0, Value) =>
     Segment = varint(_Tag,Value0),
     protobuf_segment_convert(Segment0, Segment), !,
     int_bool(Value0, Value).
+convert_segment(packed('TYPE_BOOL'), _ContextType, Segment0, Values) =>
+    protobuf_segment_convert(Segment0, packed(_, varint(Codes))),
+    phrase(packed_payload(unsigned, Values0), Codes), !,
+    maplist(int_bool, Values0, Values).
 convert_segment('TYPE_STRING', _ContextType, Segment0, Value) =>
     Segment = string(_,ValueStr),
     protobuf_segment_convert(Segment0, Segment), !,
@@ -851,26 +893,43 @@ convert_segment('TYPE_BYTES', _ContextType, Segment0, Value) =>
 convert_segment('TYPE_UINT32', _ContextType, Segment0, Value) =>
     Segment = varint(_Tag,Value),
     protobuf_segment_convert(Segment0, Segment), !.
+convert_segment(packed('TYPE_UINT32'), _ContextType, Segment0, Values) =>
+    protobuf_segment_convert(Segment0, packed(_, varint(Values))).
 convert_segment('TYPE_ENUM', ContextType, Segment0, Value) =>
     Segment = varint(_,Value0),
     protobuf_segment_convert(Segment0, Segment), !,
     protobufs:proto_meta_enum_value(ContextType, Value, Value0). % meta data
+convert_segment(packed('TYPE_ENUM'), ContextType, Segment0, Values) =>
+    protobuf_segment_convert(Segment0, packed(_, varint(Values0))),
+    maplist(protobufs:proto_meta_enum_value(ContextType), Values, Values0). % meta data
 convert_segment('TYPE_SFIXED32', _ContextType, Segment0, Value) =>
     Segment = fixed32(_,Codes),
     protobuf_segment_convert(Segment0, Segment), !,
     int32_codes(Value, Codes).
+convert_segment(packed('TYPE_SFIXED32'), _ContextType, Segment0, Values) =>
+    protobuf_segment_convert(Segment0, packed(_, fixed32(Codes))),
+    phrase(packed_payload(integer32, Values), Codes), !.
 convert_segment('TYPE_SFIXED64', _ContextType, Segment0, Value) =>
     Segment = fixed64(_,Codes),
     protobuf_segment_convert(Segment0, Segment), !,
     int64_codes(Value, Codes).
+convert_segment(packed('TYPE_SFIXED64'), _ContextType, Segment0, Values) =>
+    protobuf_segment_convert(Segment0, packed(_, fixed64(Codes))),
+    phrase(packed_payload(integer64, Values), Codes), !.
 convert_segment('TYPE_SINT32', _ContextType, Segment0, Value) =>
     Segment = varint(_,Value0),
     protobuf_segment_convert(Segment0, Segment), !,
     integer_zigzag(Value, Value0).
+convert_segment(packed('TYPE_SINT32'), _ContextType, Segment0, Values) =>
+    protobuf_segment_convert(Segment0, packed(_, varint(Values0))),
+    maplist(integer_zigzag, Values, Values0).
 convert_segment('TYPE_SINT64', _ContextType, Segment0, Value) =>
     Segment = varint(_,Value0),
     protobuf_segment_convert(Segment0, Segment), !,
     integer_zigzag(Value, Value0).
+convert_segment(packed('TYPE_SINT64'), _ContextType, Segment0, Values) =>
+    protobuf_segment_convert(Segment0, packed(_, varint(Values0))),
+    maplist(integer_zigzag, Values, Values0).
 
 % TODO: use options to translate to/from false, true (see json_read/3)
 int_bool(0, false).

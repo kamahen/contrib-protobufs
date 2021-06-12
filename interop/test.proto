@@ -14,18 +14,6 @@ message KeyValue {
   optional string value = 128;
 }
 
-message M0 {
-  repeated MyEnum v_enum = 1 [packed=false];
-}
-
-message M1 {
-  repeated KeyValue v_key_value = 12 [packed=false];
-}
-
-message M2 {
-  optional KeyValue v_key_value = 5;
-}
-
 message Scalars1 {
   // .proto types (from https://developers.google.com/protocol-buffers/docs/overview#scalar)
   // The field # is in strictly increasing order, so that the wire formats are the same

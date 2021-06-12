@@ -178,14 +178,14 @@ in some of the interoperability tests.)
 | Prolog     | Wirestream       | .proto file       | C++      | Python3  | Notes   |
 | ---------- | ---------------- | ----------------- | -------- | -------- | ------- |
 | double     | fixed64          | double            | double   | float    |         |
-| integer64  | fixed64          | fixed64           | uint64   | int      | 11      |
+| unsigned64 | fixed64          | fixed64           | uint64   | int      | 11      |
 | integer64  | fixed64          | sfixed64          | int64    |          |         |
 | float      | fixed32          | float             | float    | float    |         |
-| integer32  | fixed32          | fixed32           | uint32   | int      | 11      |
+| unsigned32 | fixed32          | fixed32           | uint32   | int      | 11      |
 | integer32  | fixed32          | sfixed32          | int32    |          |         |
 | integer    | varint           | sint32            | int32    | int      | 1, 2, 9 |
 | integer    | varint           | sint64            | int64    | int      | 1, 2, 9 |
-| signed64   | varint           | int32             | int32    | int      | 2, 3, 10 |
+| signed32   | varint           | int32             | int32    | int      | 2, 3, 10 |
 | signed64   | varint           | int64             | int64    | int      | 2, 3, 10 |
 | unsigned   | varint           | uint32            | uint32   | int      | 2, 3    |
 | unsigned   | varint           | uint64            | uint64   | int      | 2, 3    |
