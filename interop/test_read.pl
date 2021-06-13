@@ -8,6 +8,7 @@
 
 :- use_module(library(protobufs)).
 :- use_module(test_templates).
+:- use_module(test_pb).
 
 % Not needed because we're using plunit:
 % :- set_prolog_flag(optimise_debug, false). % ensure assertion/1 is executed
@@ -43,12 +44,12 @@ test(scalars1a) :-
             V_enum,
             V_key,
             V_value],
-    read_file_to_codes('scalars1a_from_python.wire', WireStream, [encoding(octet),type(binary)]),
-    % format(user_error, 'WireStream=~q~n', [WireStream]),
-    protobuf_message(Template, WireStream),
-    protobuf_message(Template, WireStream2),
-    assertion(WireStream == WireStream2),
-    protobuf_message(Template, WireStream2), % once more, with both Template and WireStream2 fully instantiated
+    read_file_to_codes('scalars1a_from_python.wire', WireCodes, [encoding(octet),type(binary)]),
+    % format(user_error, 'WireCodes=~q~n', [WireCodes]),
+    protobuf_message(Template, WireCodes),
+    protobuf_message(Template, WireCodes2),
+    assertion(WireCodes == WireCodes2),
+    protobuf_message(Template, WireCodes2), % once more, with both Template and WireCodes2 fully instantiated
     % print_term(Template, [output(user_error)]), nl(user_error),
     string_values(S1, S2, _S3, _S4),
     assertion(V_double   == 1.5),
@@ -90,12 +91,12 @@ test(scalars1b) :-
             V_enum,
             V_key,
             V_value],
-    read_file_to_codes('scalars1b_from_python.wire', WireStream, [encoding(octet),type(binary)]),
-    % format(user_error, 'WireStream=~q~n', [WireStream]),
-    protobuf_message(Template, WireStream),
-    protobuf_message(Template, WireStream2),
-    assertion(WireStream == WireStream2),
-    protobuf_message(Template, WireStream2), % once more, with both Template and WireStream2 fully instantiated
+    read_file_to_codes('scalars1b_from_python.wire', WireCodes, [encoding(octet),type(binary)]),
+    % format(user_error, 'WireCodes=~q~n', [WireCodes]),
+    protobuf_message(Template, WireCodes),
+    protobuf_message(Template, WireCodes2),
+    assertion(WireCodes == WireCodes2),
+    protobuf_message(Template, WireCodes2), % once more, with both Template and WireCodes2 fully instantiated
     % print_term(Template, [output(user_error)]), nl(user_error),
     string_values(_S1, _S2, S3, _S4),
     assertion(V_double   ==  -1.5),
@@ -116,6 +117,31 @@ test(scalars1b) :-
     assertion(V_enum     ==  'AnotherEnum'),
     assertion(V_key      ==  "foo"),
     assertion(V_value    ==  "").
+
+test(scalars_parse) :-
+    read_file_to_codes('scalars1a_from_python.wire', WireCodes, [encoding(octet),type(binary)]),
+    protobuf_parse_from_codes(WireCodes, '.test.Scalars1', Term),
+    string_values(S1, S2, _S3, _S4),
+    assertion(Term == '.test.Scalars1'{
+                                       v_double:1.5,
+                                       v_float:2.5,
+                                       v_int32:3,
+                                       v_int64:4,
+                                       v_uint32:5,
+                                       v_uint64:6,
+                                       v_sint32:7,
+                                       v_sint64:8,
+                                       v_fixed32:9,
+                                       v_fixed64:10,
+                                       v_sfixed32:11,
+                                       v_sfixed64:12,
+                                       v_bool:false,
+                                       v_string:S1,
+                                       v_bytes:[195,40],
+                                       v_enum:'E1',
+                                       v_key_value:'.test.KeyValue'{key:"reticulated python",
+                                                                    value:S2}
+                                      }).
 
 :- end_tests(scalar).
 
@@ -140,12 +166,12 @@ test(repeated1a) :-
             V_bytes,
             V_enum,
             V_key_values],
-    read_file_to_codes('repeated1a_from_python.wire', WireStream, [encoding(octet),type(binary)]),
-    % format(user_error, 'WireStream=~q~n', [WireStream]),
-    protobuf_message(Template, WireStream),
-    protobuf_message(Template, WireStream2),
-    assertion(WireStream == WireStream2),
-    protobuf_message(Template, WireStream2), % once more, with both Template and WireStream2 fully instantiated
+    read_file_to_codes('repeated1a_from_python.wire', WireCodes, [encoding(octet),type(binary)]),
+    % format(user_error, 'WireCodes=~q~n', [WireCodes]),
+    protobuf_message(Template, WireCodes),
+    protobuf_message(Template, WireCodes2),
+    assertion(WireCodes == WireCodes2),
+    protobuf_message(Template, WireCodes2), % once more, with both Template and WireCodes2 fully instantiated
     string_values(S1, _S2, _S3, S4),
     assertion(V_double     == [1.5, 0.0, -1.5]),
     assertion(V_float      == [2.5, 0.0, -2.5]),
@@ -186,9 +212,9 @@ test(packed1a) :-
             V_bytes,
             V_enum,
             V_key_values],
-    read_file_to_codes('packed1a_from_python.wire', WireStream, [encoding(octet),type(binary)]),
-    % format(user_error, 'WireStream=~q~n', [WireStream]),
-    protobuf_message(Template, WireStream),
+    read_file_to_codes('packed1a_from_python.wire', WireCodes, [encoding(octet),type(binary)]),
+    % format(user_error, 'WireCodes=~q~n', [WireCodes]),
+    protobuf_message(Template, WireCodes),
     string_values(S1, _S2, _S3, S4),
     assertion(V_double     == [1.5, 0.0, -1.5]),
     assertion(V_float      == [2.5, 0.0, -2.5]),

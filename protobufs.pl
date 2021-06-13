@@ -899,7 +899,7 @@ convert_segment(packed('TYPE_BOOL'), _ContextType, Segment0, Values) =>
 convert_segment('TYPE_STRING', _ContextType, Segment0, Value) =>
     Segment = string(_,ValueStr),
     protobuf_segment_convert(Segment0, Segment), !,
-    (   true     % TODO: control whether atom or string with an option
+    (   false    % TODO: control whether atom or string with an option
     ->  atom_string(Value, ValueStr)
     ;   Value = ValueStr
     ).
@@ -1001,7 +1001,7 @@ combine_fields_repeat([Field-repeat-Value|Fields], Field, Values, RestFields) =>
     combine_fields_repeat(Fields, Field, Values2, RestFields).
 combine_fields_repeat(Fields, _Field, Values, RestFields) => Values = [], RestFields = Fields.
 
-:- det(field_and_type/7).
+% :- det(field_and_type/7). % TODO
 %! field_and_type(+ContextType:atom, +Tag:int, -FieldName:atom, -FqnName:atom, -ContextType2:atom, -RepeatOptional:atom, -Type:atom) is det.
 % Lookup a =ContextType= and =Tag= to get the field name, type, etc.
 field_and_type(ContextType, Tag, FieldName, FqnName, ContextType2, RepeatOptional, Type) =>
