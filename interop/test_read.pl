@@ -1,6 +1,8 @@
-% -*- mode: Prolog -*-
+% -*- mode: Prolog coding:utf-8 -*-
 
 :- module(test_read, [test_read_main/0]).
+
+:- encoding(utf8).
 
 :- initialization(test_read_main, main).
 
@@ -38,6 +40,9 @@ test(scalars1a) :-
     read_file_to_codes('scalars1a_from_python.wire', WireStream, [encoding(octet),type(binary)]),
     % format(user_error, 'WireStream=~q~n', [WireStream]),
     protobuf_message(Template, WireStream),
+    protobuf_message(Template, WireStream2),
+    assertion(WireStream == WireStream2),
+    protobuf_message(Template, WireStream2), % once more, with both Template and WireStream2 fully instantiated
     % print_term(Template, [output(user_error)]), nl(user_error),
     assertion(V_double   == 1.5),
     assertion(V_float    == 2.5),
@@ -81,6 +86,9 @@ test(scalars1b) :-
     read_file_to_codes('scalars1b_from_python.wire', WireStream, [encoding(octet),type(binary)]),
     % format(user_error, 'WireStream=~q~n', [WireStream]),
     protobuf_message(Template, WireStream),
+    protobuf_message(Template, WireStream2),
+    assertion(WireStream == WireStream2),
+    protobuf_message(Template, WireStream2), % once more, with both Template and WireStream2 fully instantiated
     % print_term(Template, [output(user_error)]), nl(user_error),
     assertion(V_double   ==  -1.5),
     assertion(V_float    ==  -2.5),
@@ -127,6 +135,9 @@ test(repeated1a) :-
     read_file_to_codes('repeated1a_from_python.wire', WireStream, [encoding(octet),type(binary)]),
     % format(user_error, 'WireStream=~q~n', [WireStream]),
     protobuf_message(Template, WireStream),
+    protobuf_message(Template, WireStream2),
+    assertion(WireStream == WireStream2),
+    protobuf_message(Template, WireStream2), % once more, with both Template and WireStream2 fully instantiated
     assertion(V_double     == [1.5, 0.0, -1.5]),
     assertion(V_float      == [2.5, 0.0, -2.5]),
     assertion(V_int32      == [3, -3, 555, 0, 2147483647, -2147483648]),
