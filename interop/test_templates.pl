@@ -2,7 +2,7 @@
 
 % Common stuff for test_read.pl, scala_test_write.pl
 
-:- module(test_common, [scalars1_template/2, repeated1a_template/2, packed1a_template/2]).
+:- module(test_templates, [scalars1_template/2, repeated1a_template/2, packed1a_template/2]).
 
 % Define the my_enum callback:
 protobufs:my_enum(Key, Value) :-
