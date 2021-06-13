@@ -34,24 +34,25 @@ scalars1_template(Template, Vars) :-
                          embedded( 9999, protobuf([string(15,  V_key),
                                                    string(128, V_value)]))
                         ]),
-    Vars = [                           V_double,
-                                       V_float,
-                                       V_int32,
-                                       V_int64,
-                                       V_uint32,
-                                       V_uint64,
-                                       V_sint32,
-                                       V_sint64,
-                                       V_fixed32,
-                                       V_fixed64,
-                                       V_sfixed32,
-                                       V_sfixed64,
-                                       V_bool,
-                                       V_string,
-                                       V_bytes,
-                                       V_enum,
-                                       V_key,
-                                       V_value].
+    Vars = [                             V_double,
+                                         V_float,
+                                         V_int32,
+                                         V_int64,
+                                         V_uint32,
+                                         V_uint64,
+                                         V_sint32,
+                                         V_sint64,
+                                         V_fixed32,
+                                         V_fixed64,
+                                         V_sfixed32,
+                                         V_sfixed64,
+                                         V_bool,
+                                         V_string,
+                                         V_bytes,
+                                         V_enum,
+                                         V_key,
+                                         V_value
+           ].
 
 repeated1a_template(Template, Vars) :-
     % See test.Scalars1, test_write.py - repeated1a
@@ -78,24 +79,24 @@ repeated1a_template(Template, Vars) :-
                                            V_key_values)
                         ]),
 
-    Vars = [                           V_double,
-                                       V_float,
-                                       V_int32,
-                                       V_int64,
-                                       V_uint32,
-                                       V_uint64,
-                                       V_sint32,
-                                       V_sint64,
-                                       V_fixed32,
-                                       V_fixed64,
-                                       V_sfixed32,
-                                       V_sfixed64,
-                                       V_bool,
-                                       V_string,
-                                       V_bytes,
-                                       V_enum,
-                                       V_key_values
-                                       ].
+    Vars = [                             V_double,
+                                         V_float,
+                                         V_int32,
+                                         V_int64,
+                                         V_uint32,
+                                         V_uint64,
+                                         V_sint32,
+                                         V_sint64,
+                                         V_fixed32,
+                                         V_fixed64,
+                                         V_sfixed32,
+                                         V_sfixed64,
+                                         V_bool,
+                                         V_string,
+                                         V_bytes,
+                                         V_enum,
+                                         V_key_values
+           ].
 
 packed1a_template(Template, Vars) :-
     % repeated1a_template/2, using packed where possible
@@ -139,5 +140,5 @@ packed1a_template(Template, Vars) :-
                                        V_bytes,
                                        V_enum,
                                        V_key_values
-                                       ].
+           ].
 
