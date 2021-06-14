@@ -291,6 +291,40 @@ test(packed1a) :-
                                protobuf([string(15,S4),
                                          string(128,"reticulated python")])]).
 
+test(packed1a_parse, fixme(fails)) :-
+    read_file_to_codes('packed1a_from_python.wire', WireCodes, [encoding(octet),type(binary)]),
+    protobuf_parse_from_codes(WireCodes, '.test.Packed1', Term),
+    string_values(S1, _S2, _S3, S4),
+    assertion(Term == '.test.Packed1'{
+                                       v_double   : [ 1.5, 0.0, -1.5],
+                                       v_float    : [ 2.5, 0.0, -2.5],
+                                       v_int32    : [ 3, -3, 555, 0, 2147483647, -2147483648],
+                                       v_int64    : [ 4, -4, 0, 9223372036854775807, -9223372036854775808],
+                                       v_uint32   : [ 5, 0, 4294967295],
+                                       v_uint64   : [ 6, 7, 8, 9, 0, 18446744073709551615],
+                                       v_sint32   : [ 7, -7, 0, 2147483647, -2147483648],
+                                       v_sint64   : [ -8, 8, 0, 4611686018427387903],
+                                       v_fixed32  : [ 9, 0, 4294967295],
+                                       v_fixed64  : [10, 0, 18446744073709551615],
+                                       v_sfixed32 : [-11, 11, 0, 2147483647, -2147483648],
+                                       v_sfixed64 : [-12, 12, 0, 9223372036854775807, -9223372036854775808],
+                                       v_bool     : [false, true],
+                                       v_string   : [S1, "Hello world"],
+                                       v_bytes    : [[0xc3,0x28], [0x00,0x01,0x02]],
+                                       v_enum     : ['E1', 'Enum2', 'E1'],
+                                       v_key_value: ['.test.KeyValue'{key:"foo", value:""},
+                                                     '.test.KeyValue'{key:S4,
+                                                                      value:"reticulated python"}]
+                                      }).
+
 :- end_tests(repeated).
+
+:- begin_tests(golden).
+
+% Taken from protobuf/src/google/protobuf/unittest.proto and
+% protobuf_unittest.TestAllTypes (see also golden_message/1 in
+% ../test_protobufs.pl)
+
+:- end_tests(golden).
 
 end_of_file.
