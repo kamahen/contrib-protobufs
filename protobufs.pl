@@ -865,7 +865,7 @@ convert_segment('TYPE_INT64', _ContextType, Segment0, Value) =>
     ->  Value is -(Value0 xor 0xffffffffffffffff + 1)
     ;   Value = Value0
     ).
-convert_segment(packed('TYPE_INT64'), _ContextType, Segment0, Values) => %%%FIX%%%
+convert_segment(packed('TYPE_INT64'), _ContextType, Segment0, Values) =>
     protobuf_segment_convert(Segment0, packed(_, varint(Values0))),
     maplist(convert_varint_int64, Values0, Values), !.
 convert_segment('TYPE_UINT64', _ContextType, Segment0, Value) =>
@@ -880,8 +880,9 @@ convert_segment('TYPE_INT32', _ContextType, Segment0, Value) =>
     ->  Value is -(Value0 xor 0xffffffffffffffff + 1)
     ;   Value = Value0
     ).
-convert_segment(packed('TYPE_INT32'), _ContextType, Segment0, Values) => %%%FIX%%%
-    protobuf_segment_convert(Segment0, packed(_, varint(Values))), !.
+convert_segment(packed('TYPE_INT32'), _ContextType, Segment0, Values) =>
+    protobuf_segment_convert(Segment0, packed(_, varint(Values0))),
+    maplist(convert_varint_int32, Values0, Values), !.
 convert_segment('TYPE_FIXED64', _ContextType, Segment0, Value) =>
     Segment = fixed64(_Tag,Codes),
     protobuf_segment_convert(Segment0, Segment), !,
@@ -890,8 +891,9 @@ convert_segment('TYPE_FIXED64', _ContextType, Segment0, Value) =>
     ->  Value is -(Value0 xor 0xffffffffffffffff + 1)
     ;   Value = Value0
     ).
-convert_segment(packed('TYPE_FIXED64'), _ContextType, Segment0, Values) => %%%FIX%%%
-    protobuf_segment_convert(Segment0, packed(_, fixed64(Values))), !.
+convert_segment(packed('TYPE_FIXED64'), _ContextType, Segment0, Values) =>
+    protobuf_segment_convert(Segment0, packed(_, fixed64(Values0))),
+    maplist(convert_fixed64_fixed64, Values0, Values), !.
 convert_segment('TYPE_FIXED32', _ContextType, Segment0, Value) =>
     Segment = fixed32(_Tag,Codes),
     protobuf_segment_convert(Segment0, Segment),
@@ -900,8 +902,9 @@ convert_segment('TYPE_FIXED32', _ContextType, Segment0, Value) =>
     ->  Value is -(Value0 xor 0xffffffff + 1)
     ;   Value = Value0
     ).
-convert_segment(packed('TYPE_FIXED32'), _ContextType, Segment0, Values) =>  %%%FIX%%%
-    protobuf_segment_convert(Segment0, packed(_, fixed32(Values))), !.
+convert_segment(packed('TYPE_FIXED32'), _ContextType, Segment0, Values) =>
+    protobuf_segment_convert(Segment0, packed(_, fixed32(Values0))),
+    maplist(convert_fixed32_fixed32, Values0, Values), !.
 convert_segment('TYPE_BOOL', _ContextType, Segment0, Value) =>
     Segment = varint(_Tag,Value0),
     protobuf_segment_convert(Segment0, Segment),
@@ -954,14 +957,16 @@ convert_segment('TYPE_SINT32', _ContextType, Segment0, Value) =>
     Segment = varint(_,Value0),
     protobuf_segment_convert(Segment0, Segment), !,
     integer_zigzag(Value, Value0).
-convert_segment(packed('TYPE_SINT32'), _ContextType, Segment0, Values) => %%%FIX%%%
-    protobuf_segment_convert(Segment0, packed(_, varint(Values))), !.
+convert_segment(packed('TYPE_SINT32'), _ContextType, Segment0, Values) =>
+    protobuf_segment_convert(Segment0, packed(_, varint(Values0))),
+    maplist(convert_varint_sint32, Values0, Values), !.
 convert_segment('TYPE_SINT64', _ContextType, Segment0, Value) =>
     Segment = varint(_,Value0),
     protobuf_segment_convert(Segment0, Segment), !,
     integer_zigzag(Value, Value0).
-convert_segment(packed('TYPE_SINT64'), _ContextType, Segment0, Values) => %%%FIX%%%
-    protobuf_segment_convert(Segment0, packed(_, varint(Values))), !.
+convert_segment(packed('TYPE_SINT64'), _ContextType, Segment0, Values) =>
+    protobuf_segment_convert(Segment0, packed(_, varint(Values0))),
+    maplist(convert_varint_sint64, Values0, Values), !.
 
 convert_fixed64_double(V0, V) :-
     int64_codes(V0, Codes),
@@ -971,7 +976,35 @@ convert_fixed32_float(V0, V) :-
     int32_codes(V0, Codes),
     float32_codes(V, Codes).
 
-convert_varint_int64(V, V).
+convert_varint_int64(V0, V) :-
+    (   V0 > 0x7fffffffffffffff
+    ->  V is -(V0 xor 0xffffffffffffffff + 1)
+    ;   V = V0
+    ).
+
+convert_varint_int32(V0, V) :-
+    (   V0 > 0x7fffffff
+    ->  V is -(V0 xor 0xffffffffffffffff + 1)
+    ;   V = V0
+    ).
+
+convert_fixed64_fixed64(V0, V) :-
+        (   V0 < 0
+    ->  V is -(V0 xor 0xffffffffffffffff + 1)
+    ;   V = V0
+    ).
+
+convert_fixed32_fixed32(V0, V) :-
+        (   V0 < 0
+    ->  V is -(V0 xor 0xffffffff + 1)
+    ;   V = V0
+    ).
+
+convert_varint_sint64(V0, V) :-
+    integer_zigzag(V, V0).
+
+convert_varint_sint32(V0, V) :-
+    integer_zigzag(V, V0).
 
 % TODO: use options to translate to/from false, true (see json_read/3)
 int_bool(0, false).
