@@ -840,7 +840,7 @@ segment_to_term(ContextType0, Segment0, FieldAndValue) =>
     !, % remove choicepoint from convert_segment/2
     FieldAndValue = field_and_value(FieldName,RepeatOptional,Segment).
 
-% :- det(convert_segment/4).
+:- det(convert_segment/4).
 %! convert_segment(+Type:atom, +Segment, -Value) is det.
 % Compute an appropriate =Value= from the combination of descriptor
 % "type" (in =Type=) and a =Segment=.
@@ -886,14 +886,22 @@ convert_segment(packed('TYPE_INT32'), _ContextType, Segment0, Values) =>
 convert_segment('TYPE_FIXED64', _ContextType, Segment0, Value) =>
     Segment = fixed64(_Tag,Codes),
     protobuf_segment_convert(Segment0, Segment), !,
-    int64_codes(Value, Codes).
+    int64_codes(Value0, Codes),
+    (   Value0 < 0
+    ->  Value is -(Value0 xor 0xffffffffffffffff + 1)
+    ;   Value = Value0
+    ).
 convert_segment(packed('TYPE_FIXED64'), _ContextType, Segment0, Values) =>
     protobuf_segment_convert(Segment0, packed(_, fixed64(Codes))),
     phrase(packed_payload(integer64, Values), Codes), !.
 convert_segment('TYPE_FIXED32', _ContextType, Segment0, Value) =>
     Segment = fixed32(_Tag,Codes),
     protobuf_segment_convert(Segment0, Segment), !,
-    int32_codes(Value, Codes).
+    int32_codes(Value0, Codes),
+    (   Value0 < 0
+    ->  Value is -(Value0 xor 0xffffffff + 1)
+    ;   Value = Value0
+    ).
 convert_segment(packed('TYPE_FIXED32'), _ContextType, Segment0, Values) =>
     protobuf_segment_convert(Segment0, packed(_, fixed32(Codes))),
     phrase(packed_payload(integer32, Values), Codes), !.

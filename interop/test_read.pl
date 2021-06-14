@@ -222,11 +222,11 @@ test(repeated1a) :-
                                protobuf([string(15,S4),
                                          string(128,"reticulated python")])]).
 
-test(repeated1a_parse, blocked(fixme)) :-
+test(repeated1a_parse) :-
     read_file_to_codes('repeated1a_from_python.wire', WireCodes, [encoding(octet),type(binary)]),
-    protobuf_parse_from_codes(WireCodes, '.test.Scalars1', Term),
+    protobuf_parse_from_codes(WireCodes, '.test.Repeated1', Term),
     string_values(S1, _S2, _S3, S4),
-    assertion(Term == '.test.Scalars1'{
+    assertion(Term == '.test.Repeated1'{
                                        v_double   : [ 1.5, 0.0, -1.5],
                                        v_float    : [ 2.5, 0.0, -2.5],
                                        v_int32    : [ 3, -3, 555, 0, 2147483647, -2147483648],
@@ -241,7 +241,7 @@ test(repeated1a_parse, blocked(fixme)) :-
                                        v_sfixed64 : [-12, 12, 0, 9223372036854775807, -9223372036854775808],
                                        v_bool     : [false, true],
                                        v_string   : [S1, "Hello world"],
-                                       v_bytes    : ["\xc3\x28", "\x00\x01\x02"],
+                                       v_bytes    : [[0xc3,0x28], [0x00,0x01,0x02]],
                                        v_enum     : ['E1', 'Enum2', 'E1'],
                                        v_key_value: ['.test.KeyValue'{key:"foo", value:""},
                                                      '.test.KeyValue'{key:S4,
