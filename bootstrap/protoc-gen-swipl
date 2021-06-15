@@ -33,6 +33,14 @@ main2(Argv, FileName) :-
     set_stream(user_input, encoding(octet)),
     set_stream(user_input, type(binary)),
     read_stream_to_codes(user_input, RequestWireStream),
+    % Because of the way the code is structured, bugs can cause
+    % backtracking into a clause that gives an uninformative
+    % instantiation error. To debug this, use the following code:
+    %   :- use_module(library(prolog_stack)).  % For catch_with_backtrace
+    %   catch_with_backtrace(
+    %       protobuf_parse_from_codes(...),
+    %       Error,
+    %       ( print_message(error, Error),  halt(1) )),
     protobuf_parse_from_codes(RequestWireStream,
                               '.google.protobuf.compiler.CodeGeneratorRequest',
                               Request),

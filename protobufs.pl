@@ -514,8 +514,6 @@ protobuf_message(protobuf(TemplateList), WireStream, Residue) :-
 %
 %  @bug This predicate is preliminary and may change as additional
 %       functionality is added.
-%  @bug Does not support [groups](https://developers.google.com/protocol-buffers/docs/proto#groups)
-%       (deprecated in the protobuf documentation).
 %  @tbd Expansion of this code to allow generalized handling of wire
 %       streams with fields in arbitrary order. (See bugs for
 %       protobuf_message/2).
@@ -587,7 +585,7 @@ segment_type_tag(varint(Tag,_Codes),           varint,           Tag).
 segment_type_tag(fixed64(Tag,_Codes),          fixed64,          Tag).
 segment_type_tag(start_group(Tag),             start_group,      Tag). % TODO: delete?
 segment_type_tag(end_group(Tag),               end_group,        Tag). % TODO: delete?
-segment_type_tag(group(Tag,_Segments),         group,            Tag).
+segment_type_tag(group(Tag,_Segments),         start_group,      Tag).
 segment_type_tag(fixed32(Tag,_Codes),          fixed32,          Tag).
 segment_type_tag(length_delimited(Tag,_Codes), length_delimited, Tag).
 segment_type_tag(message(Tag,_Segments),       length_delimited, Tag).
@@ -621,14 +619,10 @@ segment_length_delimited(Tag, Result) -->
 
 length_delimited_segment(message(Tag,Segments), Tag, Codes) :-
     (   var(Segments)
-    ->  protobuf_segment_message(Segments, Codes),
-        % heuristic: start_group, end_group are deprecated, so a
-        % message shouldn't contain them.
+    ->  protobuf_segment_message(Segments, Codes)
         % TODO: A more precise check would be that
         % start_group(Tag)/end_group(Tag) appear properly nested, as
         % in single_message(group, Tag, A).
-        \+ memberchk(start_group(_), Segments),
-        \+ memberchk(end_group(_), Segments)
     ;   protobuf_segment_message(Segments, Codes)
     ).
 length_delimited_segment(string(Tag,String), Tag, Codes) :-
