@@ -1,19 +1,12 @@
 % -*- mode: Prolog -*-
 
-% TODO: delete this file when all the logic has been moved to protoc-gen-swipl
-%       and everything has been completely bootstrapped.
+% You will only need this if the protobuf specification has been
+% extended, in which case, you'll get errors from the protoc and will
+% need to rebuild everything. See bootstrap.sh and README.md.
 
 %% Parse the output of protoc --decode=FileDescriptorSet
 %%
-%% To generate the file plugin.proto.wiredump
-%%    protoc --include_imports --descriptor_set_out=plugin.proto.wire \
-%%           -I. -I$(SRC_PROTOBUF)/src -I$(SRC_PROTOBUF)/src/google/protobuf -I$(SRC_PROTOBUF)/src/google/protobuf/compiler \
-%%           plugin.proto
-%%    protoc -I. -I$(SRC_PROTOBUF)/src -I$(SRC_PROTOBUF)/src/google/protobuf -I$(SRC_PROTOBUF)/src/google/protobuf/compiler \
-%%           --decode=google.protobuf.FileDescriptorSet \
-%%           descriptor.proto \
-%%           <plugin.proto.wire >plugin.proto.wiredump
-
+%% See README.md and bootstrap.sh
 %%
 %% This code is used to bootstrap the protoc plugin.
 
@@ -33,6 +26,7 @@
 :- use_module(library(dcg/high_order),
               [sequence//2,
                optional//2]).
+:- use_module(library(pcre), [re_replace/4]).
 :- use_module(library(debug), [debug/3, debug/1]).
 
 :- meta_predicate bidi(3, 2, ?, ?, ?).
@@ -70,11 +64,13 @@ parse_FileDescriptorProto(Indent,
                                                 package:Package,
                                                 dependency:Dependency,
                                                 message_type:MessageType,
+                                                enum_type:EnumType,
                                                 options:Options}) -->
     tag_colon_string(Indent, "name", Name),
     optional_tag_colon_string(Indent, "package", Package),
     optional_tag_colon_string(Indent, "dependency", Dependency),
     sequence(name_braces(Indent, "message_type", parse_DescriptorProto), MessageType),
+    sequence(name_braces(Indent, "enum_type", parse_EnumDescriptorProto), EnumType),
     optional_name_braces(Indent, "options", parse_FileOptions,
                          'FileOptions', Options).
 
@@ -84,13 +80,17 @@ parse_DescriptorProto(Indent,
                                         nested_type:NestedType,
                                         enum_type:EnumType,
                                         extension_range:ExtensionRange,
-                                        reserved_range:ReservedRange}) -->
+                                        reserved_range:ReservedRange,
+                                        reserved_name:ReservedName}) -->
     tag_colon_string(Indent, "name", Name),
     sequence(name_braces(Indent, "field", parse_FieldDescriptorProto), Field),
     sequence(name_braces(Indent, "nested_type", parse_DescriptorProto), NestedType),
     sequence(name_braces(Indent, "enum_type", parse_EnumDescriptorProto), EnumType),
-    sequence(name_braces(Indent, "extension_range", parse_ExtensionRange), ExtensionRange),
-    sequence(name_braces(Indent, "reserved_range", parse_EnumReservedRange), ReservedRange).
+    sequence(name_braces(Indent, "extension_range", parse_ExtensionRange), ExtensionRange1),
+    sequence(name_braces(Indent, "reserved_range", parse_EnumReservedRange), ReservedRange),
+    sequence(name_braces(Indent, "extension_range", parse_ExtensionRange), ExtensionRange2),
+    { append(ExtensionRange1, ExtensionRange2, ExtensionRange) },
+    optional_tag_colon_string(Indent, "reserved_name", ReservedName).
 
 parse_FieldDescriptorProto(Indent,
                            'FieldDescriptorProto'{name:Name,
@@ -112,9 +112,11 @@ parse_FieldDescriptorProto(Indent,
      optional_tag_colon_string(Indent, "json_name", JsonName).
 
 parse_EnumDescriptorProto(Indent, 'EnumDescriptorProto'{name:Name,
-                                                        value:Value}) -->
+                                                        value:Value,
+                                                        reservedRannge:ReservedRange}) -->
     tag_colon_string(Indent, "name", Name),
-    sequence(name_braces(Indent, "value", parse_EnumValueDescriptorProto), Value).
+    sequence(name_braces(Indent, "value", parse_EnumValueDescriptorProto), Value),
+    sequence(name_braces(Indent, "reserved_range", parse_EnumReservedRange), ReservedRange).
 
 parse_EnumValueDescriptorProto(Indent, 'EnumValueDescriptorProto'{name:Name,
                                                                   number:Number}) -->
@@ -127,22 +129,46 @@ parse_ExtensionRange(Indent, 'ExtensionRange'{start:Start,
     tag_colon_number(Indent, "end", End).
 
 parse_EnumReservedRange(Indent, 'EnumReservedRange'{start:Start,
-                                                     end:End}) -->
+                                                    end:End}) -->
     tag_colon_number(Indent, "start", Start),
     tag_colon_number(Indent, "end", End).
 
 parse_FieldOptions(Indent, 'FieldOptions'{deprecated:Deprecated,
-                                          packed:Packed}) -->
+                                          packed:Packed,
+                                          retention:Retention,
+                                          targets:Targets,
+                                          edit_defaults:EditionDefaults,
+                                          feature_support:FeatureSupport}) -->
     optional_tag_colon_id(Indent, "deprecated", Deprecated),
-    optional_tag_colon_id(Indent, "packed", Packed).
+    optional_tag_colon_id(Indent, "packed", Packed),
+    optional_tag_colon_id(Indent, "retention", Retention),
+    sequence(tag_colon_id(Indent, "targets"), Targets),
+    sequence(name_braces(Indent, "edition_defaults", parse_EditionDefaults), EditionDefaults),
+    sequence(name_braces(Indent, "feature_support", parse_FeatureSupport), FeatureSupport).
+
+parse_EditionDefaults(Indent, 'EditionDefaults'{value: Value,
+                                                edition: Edition}) -->
+    optional_tag_colon_id(Indent, "value", Value),
+    optional_tag_colon_id(Indent, "edition", Edition).
+
+parse_FeatureSupport(Indent, 'FeatureSupport'{edition_introduced: EditionIntroduced,
+                                              edition_deprecated: EditionDeprecated,
+                                              deprecation_warning: DeprecationWarning,
+                                              edition_removed: EditionRemoved,
+                                              removal_error: RemovalError}) -->
+    optional_tag_colon_id(Indent, "edition_introduced", EditionIntroduced),
+    optional_tag_colon_id(Indent, "edition_deprecated", EditionDeprecated),
+    optional_tag_colon_id(Indent, "deprecation_warning", DeprecationWarning),
+    optional_tag_colon_id(Indent, "edition_removed", EditionRemoved),
+    optional_tag_colon_string(Indent, "removal_error", RemovalError).
 
 parse_FileOptions(Indent, 'FileOptions'{java_package: V_java_package,
-                                         java_outer_classname: V_java_outer_classname,
-                                         optimize_for: V_optimize_for,
-                                         go_package: V_go_package,
-                                         cc_enable_arenas: V_cc_enable_arenas,
-                                         objc_class_prefix: V_objc_class_prefix,
-                                         csharp_namespace: V_csharp_namespace}) -->
+                                        java_outer_classname: V_java_outer_classname,
+                                        optimize_for: V_optimize_for,
+                                        go_package: V_go_package,
+                                        cc_enable_arenas: V_cc_enable_arenas,
+                                        objc_class_prefix: V_objc_class_prefix,
+                                        csharp_namespace: V_csharp_namespace}) -->
     optional_tag_colon_string(Indent, "java_package", V_java_package),
     optional_tag_colon_string(Indent, "java_outer_classname", V_java_outer_classname),
     optional_tag_colon_id(Indent, "optimize_for", V_optimize_for),
@@ -207,8 +233,8 @@ colon_id(_Indent, IdAsAtom) -->
     bidi(nonblanks, atom_codes, IdAsAtom),
     blanks_to_nl, !.
 
-%! indent(Indent0, Indent)// is det.
-%! For output, indent by the codes in Indent0; new indent in Indent
+%! indent(?Indent0, ?Indent)// is det.
+% For output, indent by the codes in Indent0; new indent in Indent
 indent(Indent, [0' ,0' |Indent], S0, S) :-
     (   var(S0)
     ->  whites(Indent, S0, S)
@@ -228,7 +254,7 @@ whites([W|Ws]) -->
     [W],
     whites(Ws).
 
-%! bidi(Element, Conversion, Converted)//2 is det.
+%! bidi(+Element, +Conversion, ?Converted)// is det. % non-det?
 % Does call(Element, Codes), { call(Conversion, Converted, Codes) }
 % in appropriate order, depending on how the arguments are instantiated.
 % ("bidi" for "bidrectional")

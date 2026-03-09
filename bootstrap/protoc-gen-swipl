@@ -10,7 +10,7 @@
 % output, with the generated contents in field `file` (repeated).
 
 % Note: The name of this file (protoc-gen-swipl) follows the naming
-%       conventions for a protoc plugin, assuming that it's envoked by
+%       conventions for a protoc plugin, assuming that it's invoked by
 %       `protoc --swipl_out=...`
 
 :- initialization(main, main).
@@ -374,7 +374,7 @@ default_value_int('TYPE_SINT64').
 default_value_int('TYPE_UINT32').
 default_value_int('TYPE_UINT64').
 
-:- det(expand_FieldOptions/2).
+% :- det(expand_FieldOptions/2).
 expand_FieldOptions(FqnName, Options) :-
     lookup_pieces('.google.protobuf.FieldOptions', Options,
                   _{
@@ -385,12 +385,18 @@ expand_FieldOptions(FqnName, Options) :-
                     deprecated:           false -_, % TODO: output warning if a deprecated field is used
                     weak:                 false -_,
                     uninterpreted_option: _     -_,
-                    unverified_lazy:      _     -_
+                    unverified_lazy:      _     -_,
+                    edit_defaults:        _     -_,
+                    feature_support:      _     -_,
+                    retention:            _     -_,
+                    targets:              _     -_
                    }),
     (   Option_packed = true
     ->  output_fact(proto_meta_field_option_packed(FqnName))
     ;   true
-    ).
+    ), !.
+expand_FieldOptions(FqnName, Options) :-
+    throw(error(expand_FieldOptions(FqnName, Options), _)).
 
 :- det(expand_EnumDescriptorProto/2).
 expand_EnumDescriptorProto(Fqn, EnumType) :-

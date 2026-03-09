@@ -1,15 +1,47 @@
 # Bootstrap for the protoc plugin
 
+## If the bootstrap fails
+
+The most likely cause of the bootstrap failing is because the protobuf
+specification has added some fields. One way of figuring out the problem
+is by un-commenting the line `:- debug(dcg_trace)`.
+
+As an example, you might get these messages:
+```
+ERROR: ... .google.protobuf.FieldOptions `field_and_type=17' does not exist
+ERROR: ... .google.protobuf.ExtensionRangeOptions `field_and_type=2' does not existw
+```
+
+The easiest way of hanndling these to look for `FieldOptions` or
+`ExtensionRangeOptions` in the `*_pb.pl` files
+`gen_pb/google/protobuf/**`, then copy the various
+`protobufs:proto_meta_*` facts annd make the appropriate changes (this
+should be fairly obvious from looking at the `*.proto` files that
+you've downloaded from github. (There's probably a better way of doing
+this; I know I didn't create the `*_pb.pl` files by hand but I've
+forgotten how I did it ... perhaps the answer is elsewhere in the
+READMEs.
+
+TODO: add some text about updating the `expand_*` predicates in
+descriptor_proto_expand.pl and protoc-gen-swipl.
+
 ## Version information
+The latest bootstrap was generated from protobufs v34.0
+(https://github.com/protocolbuffers/protobuf/releases/tag/v34.0)
+downloaded from
+https://github.com/protocolbuffers/protobuf/releases/download/v34.0/protobuf-34.0.zip
+and
+https://github.com/protocolbuffers/protobuf/releases/download/v34.0/protoc-34.0-linux-x86_64.zip
+(the `protobuf-34.0.tar.gz` file has the same contents as the
+`protobuf-34.0.zip` file).
 
-The bootstrap used files from https://github.com/protocolbuffers/protobuf
-dated 12 Oct 2021 (commit `39013ab238a152b1794080b369f8c6648ab8104b`).
+The original bootstrap used files from https://github.com/protocolbuffers/protobuf
+dated 12 Oct 2021 (commit `39013ab238a152b1794080b369f8c6648ab8104b`)
+and the original bootstrap was generated with `protoc` version 3.6.1.
 
-This was originally generated with `protoc` version 3.6.1.
-
-As of June 2024 (`protoc` 3.21.12), the only changes to
-`descriptor.proto` are some comments and the addition of the field
-`unverified_lazy`; `plugin.proto` hasn't changed.
+<!-- As of June 2024 (`protoc` 3.21.12), the only changes to -->
+<!-- `descriptor.proto` are some comments and the addition of the field -->
+<!-- `unverified_lazy`; `plugin.proto` hasn't changed. -->
 
 ## Installing protobuf (on Ubuntu)
 
@@ -26,7 +58,7 @@ There are some additional notes on this in the `Makefile`.
 TODO: These notes reflect an older stage of the bootstrap process.
 Both the notes and the Makefile need to be cleaned up, to remove stuff
 that's no longer needed. However, Google has enormous amounts of code
-that depends on protobufs, so all changes are very likely to be
+that depend on protobufs, so all changes are very likely to be
 backwards compatible.
 
 NOTE: the Prolog plugin outputs an error if there is a field it
@@ -36,10 +68,17 @@ the meaning of existing fields.
 
 ## Overview of the original bootstrap process
 
+These notes are probably a bit wrong, missing some things, and
+duplicatinng others. See also `gen_pb/README.md` and `bootstrap.sh`.
+
 The original bootstrap was done by running `protoc --decode` on the
 files in `descriptor.proto` and `compiler/plugin.proto` (from
 `https://github.com/protocolbuffers/protobuf`), producing
-"*.proto.wiredump" files in (`gen_pb/google/protobuf/**`).
+"*.proto.wiredump" files in (`gen_pb/google/protobuf/**`):
+```
+export PATH=/path/to/protoc/bin:$PATH
+make -C /path/to/packages/protobufs/bootstrap check_vars
+```
 
 These were then parsed by a simple DCG in
 `parse_descriptor_proto_dump.pl` to produce the ".proto.parse"
@@ -47,8 +86,8 @@ files. The term expansion logic is in `descriptor_proto_expand.pl`,
 which was then copied to `protoc-gen-swipl`.  At this point,
 `gen_pb/google/protobuf/descriptor_pb.pl` and
 `gen_pb/google/protobuf/compiler/plugin_pb.pl` could be generated, and
-the original bootstrap code was no longer needed, and the
-".wiredump" files were deleted.
+the original bootstrap code was no longer needed, and the ".wiredump"
+files were deleted.
 
 If for some reason you need to redo the bootstrap, you'll very likely
 need to modify the simple parser - the ".wiredump" files were deleted

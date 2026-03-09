@@ -1189,7 +1189,7 @@ proto_meta_enum_value_when(ContextType, EnumValue, IntValue) :-
 proto_meta_enum_value_(ContextType, EnumValue, IntValue) :-
     (   proto_meta_enum_value(ContextType, EnumValue, IntValue)
     ->  true
-    ;   existence_error(ContextType, EnumValue-IntValue)
+    ;   existence_error(ContextType, meta_enum_value=EnumValue-IntValue)
     ).
 
 :- det(segment_to_term/3).
@@ -1455,7 +1455,7 @@ field_and_type(ContextType, Tag, FieldName, FqnName, ContextType2, RepeatOptiona
         fqn_repeat_optional(FqnName, RepeatOptional),
         proto_meta_field_type(FqnName, Type)
     ->  true % Remove choicepoint, if JITI didn't do the right thing.
-    ;   existence_error(ContextType, Tag)
+    ;   existence_error(ContextType, field_and_type=Tag)
     ).
 
 %! fqn_repeat_optional(+FqnName:atom, -RepeatOptional:atom) is det.
@@ -1509,7 +1509,7 @@ field_segment(MessageType, FieldName-Value, Segment) :-
         proto_meta_field_type_name(FieldFqn, FieldTypeName),
         proto_meta_field_label(FieldFqn, Label)
     ->  true  % Remove choicepoint, if JITI didn't do the right thing.
-    ;   existence_error(MessageType, FieldName-Value)
+    ;   existence_error(MessageType, field_segment=FieldName-Value)
     ),
     (   proto_meta_field_option_packed(FieldFqn)
     ->  Packed = packed
