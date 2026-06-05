@@ -6,11 +6,11 @@
 :-module(descriptor_pb,[]).
 :-encoding(utf8).
 :-multifile protobufs:protoc_gen_swipl_version/2.
-protobufs:protoc_gen_swipl_version(descriptor_pb,[0,9,1]).
-swi_prolog_version('9.3.35-15-gfd4dd90cb-DIRTY').
-protoc_version('3.21.12').
+protobufs:protoc_gen_swipl_version(descriptor_pb,[0,9,2]).
+swi_prolog_version('10.1.3-15-g39f600e7d-DIRTY').
+protoc_version('7.34.0').
 prototoc_gen_swipl_args([]).
-protoc_run_time('2025-11-25T06:55:26+0000', '2025-11-24T22:55:26-0800').
+protoc_run_time('2026-03-09T00:00:11+0000', '2026-03-08T17:00:11-0700').
 file_to_generate(["google/protobuf/descriptor.proto"]).
 
 :- multifile
@@ -31,7 +31,7 @@ file_to_generate(["google/protobuf/descriptor.proto"]).
     protobufs:proto_meta_oneof/3.                  % (FqnName, Index, Name)
 
 % Generated proto_meta_... facts:
-  % protoc compiler version: 3.21.12.
+  % protoc compiler version: 7.34.0.
   % file_to_generate: ["google/protobuf/descriptor.proto"]
   % parameter: ""
   % Processing file "google/protobuf/descriptor.proto"
@@ -192,7 +192,7 @@ protobufs:proto_meta_field_type('.google.protobuf.DescriptorProto.options','TYPE
 protobufs:proto_meta_field_type_name('.google.protobuf.DescriptorProto.options','.google.protobuf.MessageOptions').
 protobufs:proto_meta_field_oneof_index('.google.protobuf.DescriptorProto.options',0).
 protobufs:proto_meta_field_name('.google.protobuf.DescriptorProto',9,reserved_range,'.google.protobuf.DescriptorProto.reserved_range').
-protobufs:proto_meta_field_json_name('.google.protobuf.DescriptorProto.reserved_range',reservedRange).
+protobufs:proto_meta_field_json_name('.google.protobuf.DescriptorProto.reserved_range',reserved_range).
 protobufs:proto_meta_field_label('.google.protobuf.DescriptorProto.reserved_range','LABEL_REPEATED').
 protobufs:proto_meta_field_type('.google.protobuf.DescriptorProto.reserved_range','TYPE_MESSAGE').
 protobufs:proto_meta_field_type_name('.google.protobuf.DescriptorProto.reserved_range','.google.protobuf.DescriptorProto.ReservedRange').
@@ -397,7 +397,7 @@ protobufs:proto_meta_field_type('.google.protobuf.EnumDescriptorProto.options','
 protobufs:proto_meta_field_type_name('.google.protobuf.EnumDescriptorProto.options','.google.protobuf.EnumOptions').
 protobufs:proto_meta_field_oneof_index('.google.protobuf.EnumDescriptorProto.options',0).
 protobufs:proto_meta_field_name('.google.protobuf.EnumDescriptorProto',4,reserved_range,'.google.protobuf.EnumDescriptorProto.reserved_range').
-protobufs:proto_meta_field_json_name('.google.protobuf.EnumDescriptorProto.reserved_range',reservedRange).
+protobufs:proto_meta_field_json_name('.google.protobuf.EnumDescriptorProto.reserved_range',reserved_range).
 protobufs:proto_meta_field_label('.google.protobuf.EnumDescriptorProto.reserved_range','LABEL_REPEATED').
 protobufs:proto_meta_field_type('.google.protobuf.EnumDescriptorProto.reserved_range','TYPE_MESSAGE').
 protobufs:proto_meta_field_type_name('.google.protobuf.EnumDescriptorProto.reserved_range','.google.protobuf.EnumDescriptorProto.EnumReservedRange').
@@ -667,10 +667,17 @@ protobufs:proto_meta_field_type('.google.protobuf.FileOptions.uninterpreted_opti
 protobufs:proto_meta_field_type_name('.google.protobuf.FileOptions.uninterpreted_option','.google.protobuf.UninterpretedOption').
 protobufs:proto_meta_field_oneof_index('.google.protobuf.FileOptions.uninterpreted_option',0).
 protobufs:proto_meta_field_default_value('.google.protobuf.FileOptions.uninterpreted_option',[]).
+
 protobufs:proto_meta_enum_type('.google.protobuf.FileOptions.OptimizeMode','.google.protobuf.FileOptions','OptimizeMode').
 protobufs:proto_meta_enum_value('.google.protobuf.FileOptions.OptimizeMode','SPEED',1).
 protobufs:proto_meta_enum_value('.google.protobuf.FileOptions.OptimizeMode','CODE_SIZE',2).
 protobufs:proto_meta_enum_value('.google.protobuf.FileOptions.OptimizeMode','LITE_RUNTIME',3).
+
+protobufs:proto_meta_enum_type('.google.protobuf.FieldOptions.OptionRetention','.google.protobuf.FieldOptions','OptionRetention').
+protobufs:proto_meta_enum_value('.google.protobuf.FieldOptions.OptionRetention','RETENTION_UNKNOWN',0).
+protobufs:proto_meta_enum_value('.google.protobuf.FieldOptions.OptionRetention','RETENTION_RUNTIME',1).
+protobufs:proto_meta_enum_value('.google.protobuf.FieldOptions.OptionRetention','RETENTION_SOURCE',2).
+
 protobufs:proto_meta_normalize('.google.protobuf.MessageOptions','.google.protobuf.MessageOptions').
 protobufs:proto_meta_normalize('google.protobuf.MessageOptions','.google.protobuf.MessageOptions').
 protobufs:proto_meta_message_type('.google.protobuf.MessageOptions','.google.protobuf','MessageOptions').
@@ -740,6 +747,7 @@ protobufs:proto_meta_field_type('.google.protobuf.FieldOptions.lazy','TYPE_BOOL'
 protobufs:proto_meta_field_type_name('.google.protobuf.FieldOptions.lazy','').
 protobufs:proto_meta_field_oneof_index('.google.protobuf.FieldOptions.lazy',0).
 protobufs:proto_meta_field_default_value('.google.protobuf.FieldOptions.lazy',false).
+
 protobufs:proto_meta_field_name('.google.protobuf.FieldOptions',15,unverified_lazy,'.google.protobuf.FieldOptions.unverified_lazy').
 protobufs:proto_meta_field_json_name('.google.protobuf.FieldOptions.unverified_lazy',unverifiedLazy).
 protobufs:proto_meta_field_label('.google.protobuf.FieldOptions.unverified_lazy','LABEL_OPTIONAL').
@@ -747,6 +755,15 @@ protobufs:proto_meta_field_type('.google.protobuf.FieldOptions.unverified_lazy',
 protobufs:proto_meta_field_type_name('.google.protobuf.FieldOptions.unverified_lazy','').
 protobufs:proto_meta_field_oneof_index('.google.protobuf.FieldOptions.unverified_lazy',0).
 protobufs:proto_meta_field_default_value('.google.protobuf.FieldOptions.unverified_lazy',false).
+
+protobufs:proto_meta_field_name('.google.protobuf.FieldOptions',17,retention,'.google.protobuf.FieldOptions.retention').
+protobufs:proto_meta_field_json_name('.google.protobuf.FieldOptions.retention',retention).
+protobufs:proto_meta_field_label('.google.protobuf.FieldOptions.retention','LABEL_OPTIONAL').
+protobufs:proto_meta_field_type('.google.protobuf.FieldOptions.retention','TYPE_ENUM').
+protobufs:proto_meta_field_type_name('.google.protobuf.FieldOptions.retention','.google.protobuf.FieldOptions.OptionRetention').
+protobufs:proto_meta_field_oneof_index('.google.protobuf.FieldOptions.retention',0).
+protobufs:proto_meta_field_default_value('.google.protobuf.FieldOptions.retention',EnumName):-protobufs:proto_meta_enum_value('.google.protobuf.FieldOptions.OptionRetention',EnumName,0).
+
 protobufs:proto_meta_field_name('.google.protobuf.FieldOptions',3,deprecated,'.google.protobuf.FieldOptions.deprecated').
 protobufs:proto_meta_field_json_name('.google.protobuf.FieldOptions.deprecated',deprecated).
 protobufs:proto_meta_field_label('.google.protobuf.FieldOptions.deprecated','LABEL_OPTIONAL').

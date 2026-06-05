@@ -3,6 +3,8 @@
 % TODO: delete this file when all the logic has been moved to protoc-gen-swipl
 %       and everything has been completely bootstrapped.
 %
+% 2026-06-04 ... isn't used by the Makefile
+%
 % This code has been copied to protoc-gen-swipl, and has not been kept up-to-date
 % with subsequent changes. It is mainly of historical interest, but *might* be
 % needed if there's a signficant change to how protoc outputs its data (highly
@@ -58,7 +60,7 @@ list_commalist([Pred|Preds], (Pred,CommaList)) :-
 
 :- det(lookup_pieces/3).
 %! lookup_pieces(+Tag, +DataDict, ?LookupDict) is det.
-% Given a =DataDict=, look up the items in =LookupDict= If =DataDict=
+% Given a =DataDict=, look up the items in =LookupDict=. If =DataDict=
 % contains any keys that aren't in =LookupDict=, this predicate
 % fails. This is to catch typos. For example:
 % =|lookup_pieces(d, d{a:1,b:2}, _{a:0-A,bb:0-B,c:[]-C})|= will fail but
@@ -75,18 +77,22 @@ list_commalist([Pred|Preds], (Pred,CommaList)) :-
 lookup_pieces(Tag, DataDict, LookupDict) :-
     is_dict(DataDict, Tag),
     dict_pairs(LookupDict, _, LookupPairs),
-    lookup_piece_pairs(LookupPairs, DataDict).
+    lookup_piece_pairs(LookupPairs, DataDict, RemainderDict),
+    (   RemainderDict = _{}
+    ->  true
+    ;   % RemainderDict % tells you what key is missing
+        existence_error(Tag, lookup_piece_pairs(RemainderDict))
+    ).
 
-lookup_piece_pairs([], RemainderDict) =>
-    RemainderDict = _{}. % For debugging: assertion(RemainderDict = _{})
-lookup_piece_pairs([Key-(Default-Value)|KDVs], DataDict0) =>
-    dict_create(D0, _, [Key-Value]),
-    (   select_dict(D0, DataDict0, DataDict)
+lookup_piece_pairs([], DataDict0, RemainderDict) => DataDict0 = RemainderDict.
+lookup_piece_pairs([Key-(Default-Value)|KDVs], DataDict0, RemainderDict) =>
+    (   dict_create(D0, _, [Key-Value]),
+        select_dict(D0, DataDict0, DataDict)
     ->  true
     ;   Value = Default,
         DataDict = DataDict0
     ),
-    lookup_piece_pairs(KDVs, DataDict).
+    lookup_piece_pairs(KDVs, DataDict, RemainderDict).
 
 :- det(descriptor_proto_expand_FileDescriptorSet//1).
 descriptor_proto_expand_FileDescriptorSet(Set) -->
@@ -179,7 +185,12 @@ expand_FieldOptions(FqnName, Options) -->
                       lazy:                 false -_,
                       deprecated:           false -_, % TODO: output warning if a deprecated field is used
                       weak:                 false -_,
-                      uninterpreted_option: _     -_
+                      uninterpreted_option: _     -_,
+                      unverified_lazy:      _     -_,
+                      edit_defaults:        _     -_,
+                      feature_support:      _     -_,
+                      retention:            _     -_,
+                      targets:              _     -_
                      }) },
     (   { Option_packed = true }
     ->  [ protobufs:proto_meta_field_option_packed(FqnName) ]
@@ -194,7 +205,8 @@ expand_EnumDescriptorProto(Fqn, EnumType) -->
                       value:          [] -EnumType_value,
                       options:        _  -_,
                       reserved_range: _  -_,
-                      reserved_name:  _  -_
+                      reserved_name:  _  -_,
+                      visibility:     _  -_
                       }) },
     { add_to_fqn(Fqn, EnumType_name, FqnName) },
     [ protobufs:proto_meta_enum_type(FqnName, Fqn, EnumType_name) ],

@@ -3,6 +3,8 @@ project(swipl-protobufs)
 
 include("../cmake/PrologPackage.cmake")
 
+set(PROTOC_VERSION "34.0")
+
 AC_CHECK_HEADERS(sys/types.h)
 
 configure_file(config.h.cmake config.h)
@@ -12,8 +14,9 @@ swipl_plugin(
     C_SOURCES protobufs.c
     PL_LIBS protobufs.pl)
 
-# The following doesn't work because protoc-gen-swipl has to be marked
-# executable. So, just create this "swipl_plugin" by hand:
+# The following swipl_plugin() doesn't work because protoc-gen-swipl
+# has to be marked executable. So, create this "swipl_plugin" using
+# install_src().
 #    swipl_plugin(
 #        protoc-gen-swipl
 #        PL_LIB_SUBDIR protobufs
@@ -122,6 +125,32 @@ if(PROG_PYTHON)
     OUTPUT_VARIABLE python3_protobuf_output
     ERROR_QUIET)
 endif()
+
+if(BUILD_PROTOBUFS_PROTOC)
+  if(PROG_PROTOC AND PKG_CONFIG)
+     find_program(CURL_EXE curl REQUIRED)
+     find_program(ZIP_EXE zip REQUIRED)
+     add_custom_command(
+         COMMENT "Downloading Google protobuf files to ${CMAKE_CURRENT_BINARY_DIR}"
+         OUTPUT bootstrap/downloads/bin/protoc
+                bootstrap/downloads/include/google/protobuf/descriptor.proto
+                bootstrap/downloads/include/google/protobuf/compiler/plugin.proto
+         DEPENDS bootstrap/download.sh
+         COMMAND ${BASH_EXE} ${CMAKE_CURRENT_SOURCE_DIR}/bootstrap/download.sh ${PROTOC_VERSION} ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_CURRENT_BINARY_DIR})
+     add_custom_command(
+         COMMENT "Bootstrapping protoc-gen-swipl in ${CMAKE_CURRENT_BINARY_DIR}"
+         DEPENDS bootstrap/downloads/bin/protoc
+                 bootstrap/downloads/include/google/protobuf/descriptor.proto
+                 bootstrap/downloads/include/google/protobuf/compiler/plugin.proto
+         OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/bootstrap/protoc-gen-swipl
+         COMMAND ${BASH_EXE} ${CMAKE_CURRENT_SOURCE_DIR}/bootstrap/bootstrap.sh ${PROTOC_VERSION} ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_CURRENT_BINARY_DIR})
+     add_custom_target(
+         bootstrap-protoc-gen-swipl ALL
+         DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/bootstrap/protoc-gen-swipl)
+   else()
+     message(ERROR "BUILD_PROTOBUFS_PROTOC=ON but can't find protoc and pkg-config")
+   endif()
+ endif()
 
 # TODO: The protobuf tests leave stuff in the source directories
 #       These can be removed by:

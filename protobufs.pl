@@ -237,7 +237,7 @@ protobuf_parse_from_codes(WireCodes, MessageType0, Term) :-
 
 verify_version :-
     (   protoc_gen_swipl_version(Module, Version),
-        Version @< [0,9,1] % This must be sync-ed with changes to protoc-gen-swipl
+        Version @< [0,9,2] % This must be sync-ed with changes to protoc-gen-swipl
     ->  throw(error(version_error(Module-Version), _))
     ;   true
     ).
@@ -1189,7 +1189,7 @@ proto_meta_enum_value_when(ContextType, EnumValue, IntValue) :-
 proto_meta_enum_value_(ContextType, EnumValue, IntValue) :-
     (   proto_meta_enum_value(ContextType, EnumValue, IntValue)
     ->  true
-    ;   existence_error(ContextType, EnumValue-IntValue)
+    ;   existence_error(ContextType, proto_meta_enum_value(ContextType, EnumValue, IntValue))
     ).
 
 :- det(segment_to_term/3).
@@ -1450,12 +1450,18 @@ combine_fields_repeat(Fields, _Field, Values, RestFields) => Values = [], RestFi
 field_and_type(ContextType, Tag, FieldName, FqnName, ContextType2, RepeatOptional, Type) =>
     assertion(ground(ContextType)), % TODO: remove
     assertion(ground(Tag)), % TODO: remove
-    (   proto_meta_field_name(ContextType, Tag, FieldName, FqnName),
-        proto_meta_field_type_name(FqnName, ContextType2),
-        fqn_repeat_optional(FqnName, RepeatOptional),
+    (   proto_meta_field_name(ContextType, Tag, FieldName, FqnName)
+    ->  true
+    ;   existence_error(ContextType, proto_meta_field_name(ContextType, Tag, FieldName, FqnName))
+    ),
+    (   proto_meta_field_type_name(FqnName, ContextType2)
+    ->  true
+    ;   existence_error(ContextType, proto_meta_field_type_name(FqnName, ContextType2)-proto_meta_field_name(ContextType, Tag, FieldName, FqnName))
+    ),
+    (   fqn_repeat_optional(FqnName, RepeatOptional),
         proto_meta_field_type(FqnName, Type)
     ->  true % Remove choicepoint, if JITI didn't do the right thing.
-    ;   existence_error(ContextType, Tag)
+    ;   existence_error(ContextType, proto_meta_field_type(FqnName, Type)-proto_meta_field_type_name(FqnName, ContextType2)-proto_meta_field_name(ContextType, Tag, FieldName, FqnName))
     ).
 
 %! fqn_repeat_optional(+FqnName:atom, -RepeatOptional:atom) is det.
@@ -1504,12 +1510,21 @@ term_to_segments(Term, MessageType, Segments) :-
 %       sure of all the possible uses of field_segment/3 and that
 %       nothing depends on it being able to fail without an error).
 field_segment(MessageType, FieldName-Value, Segment) :-
-    (   proto_meta_field_name(MessageType, Tag, FieldName, FieldFqn),
-        proto_meta_field_type(FieldFqn, FieldType),
-        proto_meta_field_type_name(FieldFqn, FieldTypeName),
-        proto_meta_field_label(FieldFqn, Label)
+    (   proto_meta_field_name(MessageType, Tag, FieldName, FieldFqn)
+    ->  true;
+        existence_error(MessageType, proto_meta_field_name(MessageType, Tag, FieldName, FieldFqn))
+    ),
+    (   proto_meta_field_type(FieldFqn, FieldType)
+    ->  true
+    ;   existence_error(MessageType, proto_meta_field_type(FieldFqn, FieldType)-proto_meta_field_name(MessageType, Tag, FieldName, FieldFqn))
+    ),
+    (   proto_meta_field_type_name(FieldFqn, FieldTypeName)
+    ->  true
+    ;   existence_error(MessageType, proto_meta_field_type_name(FieldFqn, FieldTypeName)-proto_meta_field_type(FieldFqn, FieldType)-proto_meta_field_name(MessageType, Tag, FieldName, FieldFqn))
+    ),
+    (   proto_meta_field_label(FieldFqn, Label)
     ->  true  % Remove choicepoint, if JITI didn't do the right thing.
-    ;   existence_error(MessageType, FieldName-Value)
+    ;   existence_error(MessageType, proto_meta_field_label(FieldFqn, Label)-proto_meta_field_type_name(FieldFqn, FieldTypeName)-proto_meta_field_type(FieldFqn, FieldType)-proto_meta_field_name(MessageType, Tag, FieldName, FieldFqn))
     ),
     (   proto_meta_field_option_packed(FieldFqn)
     ->  Packed = packed

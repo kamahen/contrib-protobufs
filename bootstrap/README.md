@@ -1,20 +1,74 @@
 # Bootstrap for the protoc plugin
 
+## This documentation is somewhat out of date
+
+The documentation has been fully updated to reflect how
+`cmake -DBUILD_PROTOBUFS_PROTOC=ON` works.
+
+## If the bootstrap fails
+
+The most likely cause of the bootstrap failing is because the protobuf
+specification has added some fields. One way of figuring out the
+problem is by un-commenting the line `:- debug(dcg_trace)` in
+`parse_descriptor_proto_dump.pl`.
+
+As an example, you might get these messages:
+```
+ERROR: ... .google.protobuf.FieldOptions `field_and_type=17' does not exist
+ERROR: ... .google.protobuf.ExtensionRangeOptions `field_and_type=2' does not exist
+```
+
+The easiest way of handling these to look for `FieldOptions` or
+`ExtensionRangeOptions` in the `*_pb.pl` files
+`gen_pb/google/protobuf/**`, then copy the various
+`protobufs:proto_meta_*` facts and make the appropriate changes (this
+should be fairly obvious from looking at the `*.proto` files that
+you've downloaded from github. (There's probably a better way of doing
+this; I know I didn't create the `*_pb.pl` files by hand but I've
+forgotten how I did it ... perhaps the answer is elsewhere in the
+`README`s.)
+
+TODO: add some text about updating the `expand_*` predicates in
+descriptor_proto_expand.pl and protoc-gen-swipl.
+
+## How to migrate to a new version of protoc
+
+If there have been no changes to `descriptor.proto` and
+`plugin.proto`, then merely change the `PROTOC_VERSION`
+values in `CMakeList.txt`.
+
+Note that the bootstrap automatically downloads files (including the
+`protoc` binary) from `github` - you set the `protoc` version in the
+Cmake variable `PROTOC_VERSION`, which is set in `../CMakeLists.txt`.
+
+
 ## Version information
 
-The bootstrap used files from https://github.com/protocolbuffers/protobuf
-dated 12 Oct 2021 (commit `39013ab238a152b1794080b369f8c6648ab8104b`).
+The latest bootstrap was generated from protobufs v34.0
+(https://github.com/protocolbuffers/protobuf/releases/tag/v34.0)
+downloaded from
+https://github.com/protocolbuffers/protobuf/releases/download/v34.0/protobuf-34.0.zip
+and
+https://github.com/protocolbuffers/protobuf/releases/download/v34.0/protoc-34.0-linux-x86_64.zip
+(the `protobuf-34.0.tar.gz` file has the same contents as the
+`protobuf-34.0.zip` file).
 
-This was originally generated with `protoc` version 3.6.1.
+The `protoc` version is in the Cmake variable `PROTOC_VERSION`, which
+is set in `../CMakeLists.txt`.
 
-As of June 2024 (`protoc` 3.21.12), the only changes to
-`descriptor.proto` are some comments and the addition of the field
-`unverified_lazy`; `plugin.proto` hasn't changed.
+The original bootstrap used files from https://github.com/protocolbuffers/protobuf
+dated 12 Oct 2021 (commit `39013ab238a152b1794080b369f8c6648ab8104b`)
+and the original bootstrap was generated with `protoc` version 3.6.1.
+
+<!-- As of June 2024 (`protoc` 3.21.12), the only changes to -->
+<!-- `descriptor.proto` are some comments and the addition of the field -->
+<!-- `unverified_lazy`; `plugin.proto` hasn't changed. -->
 
 ## Installing protobuf (on Ubuntu)
 
 You can use the Ubuntu package `protobuf-compiler` (this has been
-tested with package 3.21.12-3, dated 8 Apr 2023) or you can clone from
+tested with package 3.21.12-3, dated 8 Apr 2023) or you can use the
+download files (mentioned above) or you can clone from
 https://github.com/protocolbuffers/protobuf and build using the
 instructions in `protobuf/src/README.md`. For the `./configure`
 command you may wish to use `./configure --prefix=$HOME/.local` and
@@ -25,21 +79,28 @@ There are some additional notes on this in the `Makefile`.
 
 TODO: These notes reflect an older stage of the bootstrap process.
 Both the notes and the Makefile need to be cleaned up, to remove stuff
-that's no longer needed. However, Google has enormous amounts of code
-that depends on protobufs, so all changes are very likely to be
-backwards compatible.
+that's no longer needed.
 
 NOTE: the Prolog plugin outputs an error if there is a field it
 doesn't recognize. This is to catch the unlikely event that the
 `.proto` specification has changed by adding something which changes
-the meaning of existing fields.
+the meaning of existing fields. However, Google has enormous amounts
+of code that depend on protobufs, so all changes are very likely to be
+backwards compatible.
 
 ## Overview of the original bootstrap process
+
+These notes are probably a bit wrong, missing some things, and
+duplicating others. See also `gen_pb/README.md` and `bootstrap.sh`.
 
 The original bootstrap was done by running `protoc --decode` on the
 files in `descriptor.proto` and `compiler/plugin.proto` (from
 `https://github.com/protocolbuffers/protobuf`), producing
-"*.proto.wiredump" files in (`gen_pb/google/protobuf/**`).
+"*.proto.wiredump" files in (`gen_pb/google/protobuf/**`):
+```
+export PATH=/path/to/protoc/bin:$PATH
+make -C /path/to/packages/protobufs/bootstrap check_vars
+```
 
 These were then parsed by a simple DCG in
 `parse_descriptor_proto_dump.pl` to produce the ".proto.parse"
@@ -47,8 +108,8 @@ files. The term expansion logic is in `descriptor_proto_expand.pl`,
 which was then copied to `protoc-gen-swipl`.  At this point,
 `gen_pb/google/protobuf/descriptor_pb.pl` and
 `gen_pb/google/protobuf/compiler/plugin_pb.pl` could be generated, and
-the original bootstrap code was no longer needed, and the
-".wiredump" files were deleted.
+the original bootstrap code was no longer needed, and the ".wiredump"
+files were deleted.
 
 If for some reason you need to redo the bootstrap, you'll very likely
 need to modify the simple parser - the ".wiredump" files were deleted
@@ -62,16 +123,16 @@ The tests are fairly minimal. For additional testing, see directory `interop`.
 
 Naming conventions:
 
-| x.proto      | protobuf definition: used as input to protoc                         |
-| x.wire       | wire-format encoding of data (e.g., produced by SerializeToString()) |
+| x_pb.pl      | generated by `protoc` from x.proto (for Prolog)                      |
+| x_pb2.py     | generated by `protoc` from x.proto (for Python)                      |
+| x.pb.{h,cc}  | generated by `protoc` from x.proto (for C++)                         |
+| x.proto      | protobuf definition: used as input to `protoc`                       |
+| x.proto.wire | wire-format encoding of data (e.g., produced by SerializeToString()) |
 | x.proto.wire | `protoc --descriptor_set_out=x.proto.wire`                  |
-| x.proto.segment | `swipl descriptor_proto.pl <x.proto.wire >x.proto.segment |
-| x_pb2.py     | generated by protoc from x.proto (for Python)                        |
-| x.pb.{h,cc}  | generated by protoc from x.proto (for C++)                           |
-| x.wiredump   | readable form of x.wire, using `protoc --decode` and the appropriate .proto file |
-| x.wirerawdump | readable from of x.wire, using `protoc --decode_raw` (no .proto file) |
-| x.segment    | Prolog term that contains a segmentation of the data in a .wire file (see also x.wiredump) |
-| descriptor.proto.parse | Output from `parse_descriptor_proto_dump.pl`, which is hand-edited into `descriptor_proto.pl` (`descriptor_proto/1`).  |
+| x.proto.wiredump | readable form of x.wire, using `protoc --decode` and the appropriate .proto file |
+| x.proto.segment | `swipl descriptor_proto.pl <x.proto.wire >x.proto.segment` Prolog term that contains a segmentation of the data in a .wire file (see also x.wiredump) |
+| x.proto.parse | Output from `parse_descriptor_proto_dump.pl`, which is hand-edited into `descriptor_proto.pl` (`descriptor_proto/1`).  |
+| x.proto.wirerawdump | (not used) readable from of x.wire, using `protoc --decode_raw` (no .proto file) |
 
 `plugin.proto` and `descriptor.proto`  encode all `.proto` files created by
 the protobuf compiler (`protoc`). Their meta-data have been bootstrapped into
@@ -112,4 +173,5 @@ increment the version and also `protobufs:verify_version/0`.  (Also
 `descriptor_proto.pl`, which is mostly obsolete.)
 
 See also
-[https://chromium.googlesource.com/external/github.com/protocolbuffers/protobuf/+/refs/heads/master/docs/implementing_proto3_presence.md](How To Implement Field Presence for Proto3).
+[https://protobuf.dev/programming-guides/field_presence/](Application Note: Field Presence) and
+[https://github.com/protocolbuffers/protobuf/blob/main/docs/implementing_proto3_presence.md](How To Implement Field Presence for Proto3).

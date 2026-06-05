@@ -21,10 +21,6 @@ protobufs.tex
 protobufspl.tex
 protobufsoverview.tex
 config.h
-config.h.in
-config.status
-config.log
-configure
 protobufs.html
 protobufs.pdf
 autom4te.cache

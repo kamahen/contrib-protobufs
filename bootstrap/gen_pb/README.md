@@ -5,8 +5,12 @@ The two files here (`google/protobuf/compiler/plugin_pb.pl` and
 `protoc-gen-swipl` as part of the bootstrap process.
 
 The files were actually generated using
-`parse_descriptor_proto_dump.pl` and extracting the term expansion,
-plus a bit of editing to make them easier to read (for debugging).
+`../parse_descriptor_proto_dump.pl` and extracting the term expansion,
+plus a bit of editing to make them easier to read (for debugging):
+```
+$ swipl -g "parse_wiredump('./gen_pb/include/google/protobuf/compiler/plugin.proto.wiredump')" -g halt parse_descriptor_proto_dump.pl >./gen_pb/include/google/protobuf/compiler/plugin.proto.parse
+$ swipl -g "parse_wiredump('./gen_pb/include/google/protobuf/descriptor.proto.wiredump')" -g halt$  parse_descriptor_proto_dump.pl >./gen_pb/include/google/protobuf/descriptor.proto.parse
+```
 
 Here's the result of running "make" in the parent directory
 (`protobufs/bootstrap`) on `plugin.proto` (`descriptor.proto` is
