@@ -16,10 +16,33 @@ As of June 2024 (`protoc` 3.21.12), the only changes to
 You can use the Ubuntu package `protobuf-compiler` (this has been
 tested with package 3.21.12-3, dated 8 Apr 2023) or you can clone from
 https://github.com/protocolbuffers/protobuf and build using the
-instructions in `protobuf/src/README.md`. For the `./configure`
-command you may wish to use `./configure --prefix=$HOME/.local` and
-`make -j4` (where "4" should be replaced by the number of cores on
-your machine).
+instructions in `/path/to/src/protobuf/src/README.md`. The followig
+
+
+Clone the repository:
+```
+mkdir /path/to/src
+cd /path/to/src
+git clone https://github.com/protocolbuffers/protobuf.git
+```
+Build using `cmake`:
+```
+mkdir protobuf/build-v36.2
+cd protobuf/build-v36.2
+cmake -DCMAKE_INSTALL_PREFIX=$HOME/.local -G Ninja ..
+ninja
+```
+To install (you can add the option `--prefix $HOME/.local` after the `.`):
+```
+cmake --install .
+hash -r
+```
+To delete the installed files:
+```
+rm $(cat install_manifest.txt )
+find  $HOME/.local -type d -empty -delete
+hash -r
+```
 
 There are some additional notes on this in the `Makefile`.
 
@@ -37,9 +60,12 @@ the meaning of existing fields.
 ## Overview of the original bootstrap process
 
 The original bootstrap was done by running `protoc --decode` on the
-files in `descriptor.proto` and `compiler/plugin.proto` (from
+files `descriptor.proto` and `compiler/plugin.proto` (from
 `https://github.com/protocolbuffers/protobuf`), producing
 "*.proto.wiredump" files in (`gen_pb/google/protobuf/**`).
+```
+make PROTOC_INCLUDE=$HOME
+```
 
 These were then parsed by a simple DCG in
 `parse_descriptor_proto_dump.pl` to produce the ".proto.parse"

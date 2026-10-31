@@ -26,7 +26,10 @@
 % parse_descriptor_proto_dump.pl and extracting the contents. See also
 % descriptor_proto.pl
 
-:- use_module(gen_pb/google/protobuf/compiler/plugin_pb).
+:- assertz(user:file_search_path(protobuf, library(ext/protobufs/protobufs/gen_pb))).
+:- absolute_file_name(protobuf(google/protobuf/compiler/plugin_pb), Z, [file_type(prolog),access(read)]),
+    writeln(user_error, include-Z).
+:- use_module(protobuf(google/protobuf/compiler/plugin_pb)).
 
 main(Argv) :-
     with_output_to(string(Content), main2(Argv, FileName)),
@@ -40,7 +43,7 @@ main(Argv) :-
                         ]
                         ),
     File = protobuf([ % message File
-                      string( 1, PbName),   % optional string name = 1
+                      string( 1, PbName), % optional string name = 1
                       string(15, Content) % optional string content = 15
                     ]),
     protobuf_message(Response, ResponseWireStream),
@@ -68,6 +71,19 @@ main2(Argv, FileName) :-
     protobuf_parse_from_codes(RequestWireStream,
                               '.google.protobuf.compiler.CodeGeneratorRequest',
                               Request),
+    % Request is of the form:
+    % '.google.protobuf.compiler.CodeGeneratorRequest'{ 
+    %   compiler_version: '.google.protobuf.compiler.Version'{ 
+    %     major: 3, minor: 21, patch: 12, suffix: ""},
+    %   file_to_generate: ["google/protobuf/descriptor.proto"],
+    %   parameter: "",
+    %   proto_file: [...]}
+
+    % TODO: delete the following debug output:
+    del_dict(proto_file, Request, _, Requestx),
+    working_directory(Cwd, Cwd),
+    % print_term(Requestx, [output(user_error)]),
+    writeq(user_error, Cwd:Requestx), nl(user_error),
     Request.file_to_generate = [FileName|_],
     file_base_name(FileName, FileBaseName),
     file_name_extension(ModuleName0, Extension, FileBaseName),
@@ -219,7 +235,8 @@ expand_file(FileToGenerate, File) :-
 
 :- det(expand_file_impl/1).
 expand_file_impl(File) :-
-    lookup_pieces('.google.protobuf.FileDescriptorProto', File,
+    lookup_pieces('.google.protobuf.FileDescriptorProto',
+                  File,
                   _{
                     name:              ''              -File_name,
                     package:           ''              -File_package,
@@ -254,11 +271,16 @@ expand_file_dependency(File, Dependency) :-
     absolute_file_name(Dependency, AbsDependency, []),
     relative_file_name(AbsDependency, AbsFile, RelativeDependency),
     proto_to_pb(RelativeDependency, PbName),
-    format(':- ~q.~n', [use_module(PbName)]).
+    format('% ~q~n', expand_file_dependency(file=File, dependency=Dependency)),
+    format('% ~q~n', abs: expand_file_dependency(file=AbsFile, dependency=AbsDependency)-rel=RelativeDependency),
+    file_directory_name(File, FileDir),
+    directory_file_path(FileDir, PbName, PbModule),
+    format(':- ~q.  % ~q ~q~n', [use_module(protobuf(PbModule)), FileDir, PbName]). % TODO: remove  debug  output
 
 :- det(expand_DescriptorProto/2).
 expand_DescriptorProto(Fqn, MessageType) :-
-    lookup_pieces('.google.protobuf.DescriptorProto', MessageType,
+    lookup_pieces('.google.protobuf.DescriptorProto',
+                  MessageType,
                   _{
                     name:            ''      -MessageType_name,
                     field:           []       -MessageType_field,
@@ -291,7 +313,8 @@ fqn_no_dot(FqnName, FqnNameNoDot) :-
 
 :- det(expand_OneofDescriptorProto/3).
 expand_OneofDescriptorProto(Fqn, N, Oneof) :-
-    lookup_pieces('.google.protobuf.OneofDescriptorProto', Oneof,
+    lookup_pieces('.google.protobuf.OneofDescriptorProto',
+                  Oneof,
                   _{
                     name:            ''               -Oneof_name,
                     options:         []               -_ % TODO: ??? unused
@@ -300,7 +323,8 @@ expand_OneofDescriptorProto(Fqn, N, Oneof) :-
 
 :- det(expand_FieldDescriptorProto/2).
 expand_FieldDescriptorProto(Fqn, Field) :-
-    lookup_pieces('.google.protobuf.FieldDescriptorProto', Field,
+    lookup_pieces('.google.protobuf.FieldDescriptorProto',
+                  Field,
                   _{
                     name:            ''               -Field_name,
                     number:          0                -Field_number,
@@ -376,7 +400,8 @@ default_value_int('TYPE_UINT64').
 
 :- det(expand_FieldOptions/2).
 expand_FieldOptions(FqnName, Options) :-
-    lookup_pieces('.google.protobuf.FieldOptions', Options,
+    lookup_pieces('.google.protobuf.FieldOptions',
+                  Options,
                   _{
                     ctype:                _     -_,
                     packed:               false -Option_packed,
@@ -394,7 +419,8 @@ expand_FieldOptions(FqnName, Options) :-
 
 :- det(expand_EnumDescriptorProto/2).
 expand_EnumDescriptorProto(Fqn, EnumType) :-
-    lookup_pieces('.google.protobuf.EnumDescriptorProto', EnumType,
+    lookup_pieces('.google.protobuf.EnumDescriptorProto',
+                  EnumType,
                   _{
                     name:           '' -EnumType_name,
                     value:          [] -EnumType_value,
@@ -408,7 +434,8 @@ expand_EnumDescriptorProto(Fqn, EnumType) :-
 
 :- det(expand_EnumValueDescriptorProto/2).
 expand_EnumValueDescriptorProto(Fqn, Value) :-
-    lookup_pieces('.google.protobuf.EnumValueDescriptorProto', Value,
+    lookup_pieces('.google.protobuf.EnumValueDescriptorProto',
+                  Value,
                   _{
                     name:    ''-Value_name,
                     number:  0-Value_number,
@@ -417,14 +444,20 @@ expand_EnumValueDescriptorProto(Fqn, Value) :-
     output_fact(proto_meta_enum_value(Fqn, Value_name, Value_number)).
 
 :- det(lookup_pieces/3).
-%! lookup_pieces(+Tag, +DataDict, ?LookupDict) is det.
-% Given a =DataDict=, look up the items in =LookupDict= If =DataDict=
-% contains any keys that aren't in =LookupDict=, this predicate
-% fails. This is to catch typos. For example: =|lookup_pieces(d,
-% d{a:1,b:2}, _{a:0-A,bb:0-B,c:[]-C})|= will fail but
+%! lookup_pieces(+Tag, !DataDict, +LookupDict) is det.
+
+% Given a =DataDict=, look up the items using =LookupDict=, adding
+% default values to =DataDict= for keys that are in =LookupDict= and
+% not in =DataDict=. If =DataDict= contains any keys that aren't in
+% =LookupDict=, this predicate throws an exception (this is to catch
+% typos).  For example, =|lookup_pieces(d, d{a:1,b:2},
+% _{a:0-A,bb:0-B,c:[]-C})|= will throw an exception but
 % =|lookup_pieces(d, d{a:1,b:2}, _{a:0-A,b:0-B,c:[]-C})|= will succeed
-% with =|A=1,B=2,C=[]|=. In other words, =LookupDict= must contain all
-% the possible keys in =DataDict= (with suitable defaults, of course).
+% with =|A=1,B=2,C=[]|=.
+%
+% The 2nd parameter is updated and the 3rd parameter is input -- this
+% is because it makes the calling code more readable.
+%
 % @param Tag the tag for =DataDict=
 % @param DataDict items in =LookupDict= are looked up in here.
 %        Its tag must unify with =Tag= (i.e., =|is_dict(DataDict,Tag)|=).
