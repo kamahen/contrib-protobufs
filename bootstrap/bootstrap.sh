@@ -11,34 +11,31 @@
 #
 # The script expects to be called during the build step with
 # ${PROTOC_VERSION ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_CURRENT_BINARY_DIR}
+# and expects $OUTDIR/bootstrap/downloads to be populated with
+# the necessary _*pb.pl files from the source directory.
 
-set -e -x
+set -e # -x
 set -o pipefail
 
 export PROTOC_VERSION="$1"
 export SRCDIR=$(realpath "$2")
 export OUTDIR=$(realpath "$3")
+
 # the .proto files are downloaded to $(OUTDIR):
 export SRCDIR_PB=$OUTDIR/bootstrap/downloads/include
 export OUTDIR_PB=$OUTDIR/bootstrap/downloads/include
 
-# Typically, $SRCDIR is $(realpath $(dirname "$0")/..) but we
-# shouldn't rely on that.
+export MAKE_="make OUTDIR_PB=$OUTDIR_PB -j4 --warn-undefined-variables -C $SRCDIR/bootstrap"
+
+# Typically, $SRCDIR is $(realpath $(dirname "$0")/..) but shouldn't
+# rely on that.
 
 # export PROTOC_SRC=$HOME/tmp/protobuf-v${PROTOC_VERSION}
 export PROTOC_SRC="$OUTDIR/bootstrap/downloads"
 
-# wget -nv https://github.com/protocolbuffers/protobuf/releases/download/v${PROTOC_VERSION}/protoc-${PROTOC_VERSION}-linux-x86_64.zip
-# wget -nv https://github.com/protocolbuffers/protobuf/releases/download/v${PROTOC_VERSION}/protobuf-${PROTOC_VERSION}.zip
-# mkdir -p zz
-# cd zz
-# unzip ../protoc-${PROTOC_VERSION}-linux-x86_64.zip
-# unzip ../protobuf-${PROTOC_VERSION}.zip
-# mv -i mv -i * $PROTOC_SRC
-
 # At this point, we have $PROTOC_SRC/{bin,include/google,readme.txt}
 
-tree $PROTOC_SRC
+# tree $PROTOC_SRC
 
 # The built swipl is in build/src and the downloaded protoc
 # is in $PROTOC_SRC/bin:
@@ -50,7 +47,7 @@ set | grep SWI
 $PD/swipl --version
 $PD/swipl --dump_runtime_variables
 
-make -j1 -C $SRCDIR/bootstrap check_vars
+$MAKE_ check_vars
 #   BUILD_BIN_DIR=  $HOME/src/swipl-devel/build.gcc/src/
 #   SWIPL=          $HOME/src/swipl-devel/build.gcc/src/swipl
 #   PROTOC=         $PROTOC_SRC/bin/protoc
@@ -58,32 +55,42 @@ make -j1 -C $SRCDIR/bootstrap check_vars
 #   PROTOC_GEN_PROLOG_PB=gen_pb
 
 # TODO: not all of these files are needed:
-# The following are because .PRECIOUS doesn't seem to work:
-make -j1 -C $SRCDIR/bootstrap \
-     $OUTDIR/bootstrap/downloads/include/google/protobuf/compiler/plugin.proto.wire \
-     $OUTDIR/bootstrap/downloads/include/google/protobuf/compiler/plugin.proto.wiredump \
-     $OUTDIR/bootstrap/downloads/include/google/protobuf/compiler/plugin.proto.wirerawdump \
-     $OUTDIR/bootstrap/downloads/include/google/protobuf/compiler/plugin.proto.parse \
+# *.wirerawdump are only for debugging
+# The intermediate files are specified because .PRECIOUS doesn't seem to work.
+$MAKE_ \
      $OUTDIR/bootstrap/downloads/include/google/protobuf/descriptor.proto.wire \
      $OUTDIR/bootstrap/downloads/include/google/protobuf/descriptor.proto.wiredump \
      $OUTDIR/bootstrap/downloads/include/google/protobuf/descriptor.proto.wirerawdump \
      $OUTDIR/bootstrap/downloads/include/google/protobuf/descriptor.proto.parse \
      $OUTDIR/bootstrap/downloads/include/google/protobuf/compiler/plugin.proto.segment \
-     $OUTDIR/bootstrap/downloads/include/google/protobuf/descriptor.proto.segment
+     $OUTDIR/bootstrap/downloads/include/google/protobuf/descriptor.proto.segment \
+     $OUTDIR/bootstrap/downloads/include/google/protobuf/compiler/plugin.proto.wire \
+     $OUTDIR/bootstrap/downloads/include/google/protobuf/compiler/plugin.proto.wiredump \
+     $OUTDIR/bootstrap/downloads/include/google/protobuf/compiler/plugin.proto.wirerawdump \
+     $OUTDIR/bootstrap/downloads/include/google/protobuf/compiler/plugin.proto.parse
 
-tree $PROTOC_SRC
+# tree $PROTOC_SRC
 
 # The *_pb.qlf files are only for generating error messages from *_pb.pl
-# TODO: -j2
-make OUTDIR_PB=$OUTDIR_PB \
-     -j1 --warn-undefined-variables \
-     -C $SRCDIR/bootstrap \
-     $OUTDIR_PB/google/protobuf/descriptor_pb.pl \
-     $OUTDIR_PB/google/protobuf/descriptor_pb.qlf \
-     $OUTDIR_PB/google/protobuf/compiler/plugin_pb.pl \
-     $OUTDIR_PB/google/protobuf/compiler/plugin_pb.qlf
+$MAKE_ $OUTDIR_PB/google/protobuf/descriptor_pb.pl \
+       $OUTDIR_PB/google/protobuf/descriptor_pb.qlf \
+       $OUTDIR_PB/google/protobuf/compiler/plugin_pb.pl \
+       $OUTDIR_PB/google/protobuf/compiler/plugin_pb.qlf
+
+rm -f $OUTDIR_PB/google/protobuf/descriptor_pb.qlf \
+      $OUTDIR_PB/google/protobuf/compiler/plugin_pb.qlf
 
 # tree $OUTDIR/bootstrap
-tree $PROTOC_SRC
+# tree $PROTOC_SRC
 
-(cd $SRCDIR && git clean -n -dxf)
+# The following will fail if $SRCDIR is read-only
+
+(
+    set -x
+    cp $OUTDIR/bootstrap/downloads/include/google/protobuf/descriptor_pb.pl \
+       $SRCDIR/bootstrap/gen_pb/google/protobuf/descriptor_pb.pl
+    cp $OUTDIR/bootstrap/downloads/include/google/protobuf/compiler/plugin_pb.pl \
+       $SRCDIR/bootstrap/gen_pb/google/protobuf/compiler/plugin_pb.pl
+)
+
+# (cd $SRCDIR && git clean -n -dxf)

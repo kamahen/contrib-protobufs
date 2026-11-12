@@ -9,6 +9,7 @@
 
 :- use_module(library(debug), [assertion/1]).
 :- use_module(library(protobufs)).
+:- use_module(library(readutil), [read_file_to_codes/3]).
 
 %! test_segment_messages is det.
 % Tests round-trip of segment_protobuf_segment_message/2,

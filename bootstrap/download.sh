@@ -14,7 +14,7 @@
 #     $OUTDIR/bootstrap/downloads/include/google/protobuf/descriptor.proto
 #     $OUTDIR/bootstrap/downloads/include/google/protobuf/compiler/plugin.proto
 
-set -e -x
+set -e # -x
 set -o pipefail
 
 PROTOC_VERSION="$1"

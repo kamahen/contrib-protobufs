@@ -36,10 +36,11 @@
     ]).
 
 :- use_module(descriptor_proto_expand, [descriptor_proto_expand_FileDescriptorSet/2]).
-:- use_module(library(readutil), [read_stream_to_codes/3]).
+:- use_module(library(readutil), [read_stream_to_codes/2]).
 :- use_module(library(protobufs)).
-:- use_module(library(debug)).
 :- use_module(library(pcre), [re_replace/4]).
+:- use_module(library(pprint), [print_term/2]).
+% :- use_module(library(debug)).
 
 :- initialization(main, main).
 
@@ -47,11 +48,13 @@
 :-multifile protobufs:protoc_gen_swipl_version/2.
 protobufs:protoc_gen_swipl_version(descriptor_proto, [0,9,1]).
 
-main :-
+main :- main(user_input).
+
+main(InputFile) :-
     sanity_check,
-    set_stream(user_input, encoding(octet)),
-    set_stream(user_input, type(binary)),
-    read_stream_to_codes(user_input, WireCodes),
+    set_stream(InputFile, encoding(octet)),
+    set_stream(InputFile, type(binary)),
+    read_stream_to_codes(InputFile, WireCodes),
     protobuf_parse_from_codes(WireCodes, '.google.protobuf.FileDescriptorSet', Msg),
     write_metadata(Msg).
 
@@ -228,6 +231,16 @@ descriptor_set(
 						 label: 'LABEL_OPTIONAL',
 						 name: syntax,
 						 number: 12,
+						 options: 'FieldOptions'{},
+						 type: 'TYPE_STRING',
+						 type_name: ''
+					       },
+					     'FieldDescriptorProto'{
+						 default_value: '',
+						 json_name: edition,
+						 label: 'LABEL_OPTIONAL',
+						 name: edition,
+						 number: 13,
 						 options: 'FieldOptions'{},
 						 type: 'TYPE_STRING',
 						 type_name: ''
@@ -412,7 +425,19 @@ descriptor_set(
 				    reserved_range: []
 				  },
 				'DescriptorProto'{
-				    enum_type: [],
+				    enum_type: [ 'EnumDescriptorProto'{
+						     name: 'VerificationState',
+						     value: [ 'EnumValueDescriptorProto'{
+								  name: 'DECLARATION',
+								  number: 0
+								},
+							      'EnumValueDescriptorProto'{
+								  name: 'UNVERIFIED',
+								  number: 1
+								}
+							    ]
+						   }
+					       ],
 				    extension_range: [ 'ExtensionRange'{
 							   end: 536870912,
 							   start: 1000
@@ -427,10 +452,108 @@ descriptor_set(
 						 options: 'FieldOptions'{},
 						 type: 'TYPE_MESSAGE',
 						 type_name: '.google.protobuf.UninterpretedOption'
+					       },
+					     'FieldDescriptorProto'{
+						 default_value: '',
+						 json_name: declaration,
+						 label: 'LABEL_REPEATED',
+						 name: declaration,
+						 number: 2,
+						 options: 'FieldOptions'{
+							      deprecated: '',
+							      edition: 'EditionDefaults'{},
+							      packed: '',
+							      retention: 'RETENTION_SOURCE',
+							      targets: []
+							    },
+						 type: 'TYPE_MESSAGE',
+						 type_name: '.google.protobuf.ExtensionRangeOptions.Declaration'
+					       },
+					     'FieldDescriptorProto'{
+						 default_value: '',
+						 json_name: features,
+						 label: 'LABEL_OPTIONAL',
+						 name: features,
+						 number: 50,
+						 options: 'FieldOptions'{},
+						 type: 'TYPE_MESSAGE',
+						 type_name: '.google.protobuf.FeatureSet'
+					       },
+					     'FieldDescriptorProto'{
+						 default_value: 'UNVERIFIED',
+						 json_name: verification,
+						 label: 'LABEL_OPTIONAL',
+						 name: verification,
+						 number: 3,
+						 options: 'FieldOptions'{},
+						 type: 'TYPE_ENUM',
+						 type_name: '.google.protobuf.ExtensionRangeOptions.VerificationState'
 					       }
 					   ],
 				    name: 'ExtensionRangeOptions',
-				    nested_type: [],
+				    nested_type: [ 'DescriptorProto'{
+						       enum_type: [],
+						       extension_range: [],
+						       field: [ 'FieldDescriptorProto'{
+								    default_value: '',
+								    json_name: number,
+								    label: 'LABEL_OPTIONAL',
+								    name: number,
+								    number: 1,
+								    options: 'FieldOptions'{},
+								    type: 'TYPE_INT32',
+								    type_name: ''
+								  },
+								'FieldDescriptorProto'{
+								    default_value: '',
+								    json_name: fullName,
+								    label: 'LABEL_OPTIONAL',
+								    name: full_name,
+								    number: 2,
+								    options: 'FieldOptions'{},
+								    type: 'TYPE_STRING',
+								    type_name: ''
+								  },
+								'FieldDescriptorProto'{
+								    default_value: '',
+								    json_name: type,
+								    label: 'LABEL_OPTIONAL',
+								    name: type,
+								    number: 3,
+								    options: 'FieldOptions'{},
+								    type: 'TYPE_STRING',
+								    type_name: ''
+								  },
+								'FieldDescriptorProto'{
+								    default_value: '',
+								    json_name: reserved,
+								    label: 'LABEL_OPTIONAL',
+								    name: reserved,
+								    number: 5,
+								    options: 'FieldOptions'{},
+								    type: 'TYPE_BOOL',
+								    type_name: ''
+								  },
+								'FieldDescriptorProto'{
+								    default_value: '',
+								    json_name: repeated,
+								    label: 'LABEL_OPTIONAL',
+								    name: repeated,
+								    number: 6,
+								    options: 'FieldOptions'{},
+								    type: 'TYPE_BOOL',
+								    type_name: ''
+								  }
+							      ],
+						       name: 'Declaration',
+						       nested_type: [],
+						       reserved_range: [ 'EnumReservedRange'{
+									     end: 5,
+									     start: 4
+									   }
+								       ]
+						     }
+						 ],
 				    reserved_range: []
 				  },
 				'DescriptorProto'{
@@ -962,7 +1085,10 @@ descriptor_set(
 						 number: 20,
 						 options: 'FieldOptions'{
 							      deprecated: true,
-							      packed: ''
+							      edition: 'EditionDefaults'{},
+							      packed: '',
+							      retention: '',
+							      targets: []
 							    },
 						 type: 'TYPE_BOOL',
 						 type_name: ''
@@ -1129,6 +1255,16 @@ descriptor_set(
 					       },
 					     'FieldDescriptorProto'{
 						 default_value: '',
+						 json_name: features,
+						 label: 'LABEL_OPTIONAL',
+						 name: features,
+						 number: 50,
+						 options: 'FieldOptions'{},
+						 type: 'TYPE_MESSAGE',
+						 type_name: '.google.protobuf.FeatureSet'
+					       },
+					     'FieldDescriptorProto'{
+						 default_value: '',
 						 json_name: uninterpretedOption,
 						 label: 'LABEL_REPEATED',
 						 name: uninterpreted_option,
@@ -1192,6 +1328,32 @@ descriptor_set(
 						 options: 'FieldOptions'{},
 						 type: 'TYPE_BOOL',
 						 type_name: ''
+					       },
+					     'FieldDescriptorProto'{
+						 default_value: '',
+						 json_name: deprecatedLegacyJsonFieldConflicts,
+						 label: 'LABEL_OPTIONAL',
+						 name: deprecated_legacy_json_field_conflicts,
+						 number: 11,
+						 options: 'FieldOptions'{
+							      deprecated: true,
+							      edition: 'EditionDefaults'{},
+							      packed: '',
+							      retention: '',
+							      targets: []
+							    },
+						 type: 'TYPE_BOOL',
+						 type_name: ''
+					       },
+					     'FieldDescriptorProto'{
+						 default_value: '',
+						 json_name: features,
+						 label: 'LABEL_OPTIONAL',
+						 name: features,
+						 number: 12,
+						 options: 'FieldOptions'{},
+						 type: 'TYPE_MESSAGE',
+						 type_name: '.google.protobuf.FeatureSet'
 					       },
 					     'FieldDescriptorProto'{
 						 default_value: '',
@@ -1260,6 +1422,66 @@ descriptor_set(
 								  number: 2
 								}
 							    ]
+						   },
+						 'EnumDescriptorProto'{
+						     name: 'OptionRetention',
+						     value: [ 'EnumValueDescriptorProto'{
+								  name: 'RETENTION_UNKNOWN',
+								  number: 0
+								},
+							      'EnumValueDescriptorProto'{
+								  name: 'RETENTION_RUNTIME',
+								  number: 1
+								},
+							      'EnumValueDescriptorProto'{
+								  name: 'RETENTION_SOURCE',
+								  number: 2
+								}
+							    ]
+						   },
+						 'EnumDescriptorProto'{
+						     name: 'OptionTargetType',
+						     value: [ 'EnumValueDescriptorProto'{
+								  name: 'TARGET_TYPE_UNKNOWN',
+								  number: 0
+								},
+							      'EnumValueDescriptorProto'{
+								  name: 'TARGET_TYPE_FILE',
+								  number: 1
+								},
+							      'EnumValueDescriptorProto'{
+								  name: 'TARGET_TYPE_EXTENSION_RANGE',
+								  number: 2
+								},
+							      'EnumValueDescriptorProto'{
+								  name: 'TARGET_TYPE_MESSAGE',
+								  number: 3
+								},
+							      'EnumValueDescriptorProto'{
+								  name: 'TARGET_TYPE_FIELD',
+								  number: 4
+								},
+							      'EnumValueDescriptorProto'{
+								  name: 'TARGET_TYPE_ONEOF',
+								  number: 5
+								},
+							      'EnumValueDescriptorProto'{
+								  name: 'TARGET_TYPE_ENUM',
+								  number: 6
+								},
+							      'EnumValueDescriptorProto'{
+								  name: 'TARGET_TYPE_ENUM_ENTRY',
+								  number: 7
+								},
+							      'EnumValueDescriptorProto'{
+								  name: 'TARGET_TYPE_SERVICE',
+								  number: 8
+								},
+							      'EnumValueDescriptorProto'{
+								  name: 'TARGET_TYPE_METHOD',
+								  number: 9
+								}
+							    ]
 						   }
 					       ],
 				    extension_range: [ 'ExtensionRange'{
@@ -1309,6 +1531,16 @@ descriptor_set(
 					       },
 					     'FieldDescriptorProto'{
 						 default_value: false,
+						 json_name: unverifiedLazy,
+						 label: 'LABEL_OPTIONAL',
+						 name: unverified_lazy,
+						 number: 15,
+						 options: 'FieldOptions'{},
+						 type: 'TYPE_BOOL',
+						 type_name: ''
+					       },
+					     'FieldDescriptorProto'{
+						 default_value: false,
 						 json_name: deprecated,
 						 label: 'LABEL_OPTIONAL',
 						 name: deprecated,
@@ -1328,6 +1560,56 @@ descriptor_set(
 						 type_name: ''
 					       },
 					     'FieldDescriptorProto'{
+						 default_value: false,
+						 json_name: debugRedact,
+						 label: 'LABEL_OPTIONAL',
+						 name: debug_redact,
+						 number: 16,
+						 options: 'FieldOptions'{},
+						 type: 'TYPE_BOOL',
+						 type_name: ''
+					       },
+					     'FieldDescriptorProto'{
+						 default_value: '',
+						 json_name: retention,
+						 label: 'LABEL_OPTIONAL',
+						 name: retention,
+						 number: 17,
+						 options: 'FieldOptions'{},
+						 type: 'TYPE_ENUM',
+						 type_name: '.google.protobuf.FieldOptions.OptionRetention'
+					       },
+					     'FieldDescriptorProto'{
+						 default_value: '',
+						 json_name: targets,
+						 label: 'LABEL_REPEATED',
+						 name: targets,
+						 number: 19,
+						 options: 'FieldOptions'{},
+						 type: 'TYPE_ENUM',
+						 type_name: '.google.protobuf.FieldOptions.OptionTargetType'
+					       },
+					     'FieldDescriptorProto'{
+						 default_value: '',
+						 json_name: editionDefaults,
+						 label: 'LABEL_REPEATED',
+						 name: edition_defaults,
+						 number: 20,
+						 options: 'FieldOptions'{},
+						 type: 'TYPE_MESSAGE',
+						 type_name: '.google.protobuf.FieldOptions.EditionDefault'
+					       },
+					     'FieldDescriptorProto'{
+						 default_value: '',
+						 json_name: features,
+						 label: 'LABEL_OPTIONAL',
+						 name: features,
+						 number: 21,
+						 options: 'FieldOptions'{},
+						 type: 'TYPE_MESSAGE',
+						 type_name: '.google.protobuf.FeatureSet'
+					       },
+					     'FieldDescriptorProto'{
 						 default_value: '',
 						 json_name: uninterpretedOption,
 						 label: 'LABEL_REPEATED',
@@ -1339,10 +1621,42 @@ descriptor_set(
 					       }
 					   ],
 				    name: 'FieldOptions',
-				    nested_type: [],
+				    nested_type: [ 'DescriptorProto'{
+						       enum_type: [],
+						       extension_range: [],
+						       field: [ 'FieldDescriptorProto'{
+								    default_value: '',
+								    json_name: edition,
+								    label: 'LABEL_OPTIONAL',
+								    name: edition,
+								    number: 1,
+								    options: 'FieldOptions'{},
+								    type: 'TYPE_STRING',
+								    type_name: ''
+								  },
+								'FieldDescriptorProto'{
+								    default_value: '',
+								    json_name: value,
+								    label: 'LABEL_OPTIONAL',
+								    name: value,
+								    number: 2,
+								    options: 'FieldOptions'{},
+								    type: 'TYPE_STRING',
+								    type_name: ''
+								  }
+							      ],
+						       name: 'EditionDefault',
+						       nested_type: [],
+						       reserved_range: []
+						     }
+						 ],
 				    reserved_range: [ 'EnumReservedRange'{
 							  end: 5,
 							  start: 4
+							},
+						      'EnumReservedRange'{
+							  end: 19,
+							  start: 18
 							}
 						    ]
 				  },
@@ -1354,6 +1668,16 @@ descriptor_set(
 							 }
 						     ],
 				    field: [ 'FieldDescriptorProto'{
+						 default_value: '',
+						 json_name: features,
+						 label: 'LABEL_OPTIONAL',
+						 name: features,
+						 number: 1,
+						 options: 'FieldOptions'{},
+						 type: 'TYPE_MESSAGE',
+						 type_name: '.google.protobuf.FeatureSet'
+					       },
+					     'FieldDescriptorProto'{
 						 default_value: '',
 						 json_name: uninterpretedOption,
 						 label: 'LABEL_REPEATED',
@@ -1397,6 +1721,32 @@ descriptor_set(
 					       },
 					     'FieldDescriptorProto'{
 						 default_value: '',
+						 json_name: deprecatedLegacyJsonFieldConflicts,
+						 label: 'LABEL_OPTIONAL',
+						 name: deprecated_legacy_json_field_conflicts,
+						 number: 6,
+						 options: 'FieldOptions'{
+							      deprecated: true,
+							      edition: 'EditionDefaults'{},
+							      packed: '',
+							      retention: '',
+							      targets: []
+							    },
+						 type: 'TYPE_BOOL',
+						 type_name: ''
+					       },
+					     'FieldDescriptorProto'{
+						 default_value: '',
+						 json_name: features,
+						 label: 'LABEL_OPTIONAL',
+						 name: features,
+						 number: 7,
+						 options: 'FieldOptions'{},
+						 type: 'TYPE_MESSAGE',
+						 type_name: '.google.protobuf.FeatureSet'
+					       },
+					     'FieldDescriptorProto'{
+						 default_value: '',
 						 json_name: uninterpretedOption,
 						 label: 'LABEL_REPEATED',
 						 name: uninterpreted_option,
@@ -1433,6 +1783,26 @@ descriptor_set(
 					       },
 					     'FieldDescriptorProto'{
 						 default_value: '',
+						 json_name: features,
+						 label: 'LABEL_OPTIONAL',
+						 name: features,
+						 number: 2,
+						 options: 'FieldOptions'{},
+						 type: 'TYPE_MESSAGE',
+						 type_name: '.google.protobuf.FeatureSet'
+					       },
+					     'FieldDescriptorProto'{
+						 default_value: false,
+						 json_name: debugRedact,
+						 label: 'LABEL_OPTIONAL',
+						 name: debug_redact,
+						 number: 3,
+						 options: 'FieldOptions'{},
+						 type: 'TYPE_BOOL',
+						 type_name: ''
+					       },
+					     'FieldDescriptorProto'{
+						 default_value: '',
 						 json_name: uninterpretedOption,
 						 label: 'LABEL_REPEATED',
 						 name: uninterpreted_option,
@@ -1454,6 +1824,16 @@ descriptor_set(
 							 }
 						     ],
 				    field: [ 'FieldDescriptorProto'{
+						 default_value: '',
+						 json_name: features,
+						 label: 'LABEL_OPTIONAL',
+						 name: features,
+						 number: 34,
+						 options: 'FieldOptions'{},
+						 type: 'TYPE_MESSAGE',
+						 type_name: '.google.protobuf.FeatureSet'
+					       },
+					     'FieldDescriptorProto'{
 						 default_value: false,
 						 json_name: deprecated,
 						 label: 'LABEL_OPTIONAL',
@@ -1520,6 +1900,16 @@ descriptor_set(
 						 options: 'FieldOptions'{},
 						 type: 'TYPE_ENUM',
 						 type_name: '.google.protobuf.MethodOptions.IdempotencyLevel'
+					       },
+					     'FieldDescriptorProto'{
+						 default_value: '',
+						 json_name: features,
+						 label: 'LABEL_OPTIONAL',
+						 name: features,
+						 number: 35,
+						 options: 'FieldOptions'{},
+						 type: 'TYPE_MESSAGE',
+						 type_name: '.google.protobuf.FeatureSet'
 					       },
 					     'FieldDescriptorProto'{
 						 default_value: '',
@@ -1643,6 +2033,274 @@ descriptor_set(
 				    reserved_range: []
 				  },
 				'DescriptorProto'{
+				    enum_type: [ 'EnumDescriptorProto'{
+						     name: 'FieldPresence',
+						     value: [ 'EnumValueDescriptorProto'{
+								  name: 'FIELD_PRESENCE_UNKNOWN',
+								  number: 0
+								},
+							      'EnumValueDescriptorProto'{
+								  name: 'EXPLICIT',
+								  number: 1
+								},
+							      'EnumValueDescriptorProto'{
+								  name: 'IMPLICIT',
+								  number: 2
+								},
+							      'EnumValueDescriptorProto'{
+								  name: 'LEGACY_REQUIRED',
+								  number: 3
+								}
+							    ]
+						   },
+						 'EnumDescriptorProto'{
+						     name: 'EnumType',
+						     value: [ 'EnumValueDescriptorProto'{
+								  name: 'ENUM_TYPE_UNKNOWN',
+								  number: 0
+								},
+							      'EnumValueDescriptorProto'{
+								  name: 'OPEN',
+								  number: 1
+								},
+							      'EnumValueDescriptorProto'{
+								  name: 'CLOSED',
+								  number: 2
+								}
+							    ]
+						   },
+						 'EnumDescriptorProto'{
+						     name: 'RepeatedFieldEncoding',
+						     value: [ 'EnumValueDescriptorProto'{
+								  name: 'REPEATED_FIELD_ENCODING_UNKNOWN',
+								  number: 0
+								},
+							      'EnumValueDescriptorProto'{
+								  name: 'PACKED',
+								  number: 1
+								},
+							      'EnumValueDescriptorProto'{
+								  name: 'EXPANDED',
+								  number: 2
+								}
+							    ]
+						   },
+						 'EnumDescriptorProto'{
+						     name: 'StringFieldValidation',
+						     value: [ 'EnumValueDescriptorProto'{
+								  name: 'STRING_FIELD_VALIDATION_UNKNOWN',
+								  number: 0
+								},
+							      'EnumValueDescriptorProto'{
+								  name: 'MANDATORY',
+								  number: 1
+								},
+							      'EnumValueDescriptorProto'{
+								  name: 'HINT',
+								  number: 2
+								},
+							      'EnumValueDescriptorProto'{
+								  name: 'NONE',
+								  number: 3
+								}
+							    ]
+						   },
+						 'EnumDescriptorProto'{
+						     name: 'MessageEncoding',
+						     value: [ 'EnumValueDescriptorProto'{
+								  name: 'MESSAGE_ENCODING_UNKNOWN',
+								  number: 0
+								},
+							      'EnumValueDescriptorProto'{
+								  name: 'LENGTH_PREFIXED',
+								  number: 1
+								},
+							      'EnumValueDescriptorProto'{
+								  name: 'DELIMITED',
+								  number: 2
+								}
+							    ]
+						   },
+						 'EnumDescriptorProto'{
+						     name: 'JsonFormat',
+						     value: [ 'EnumValueDescriptorProto'{
+								  name: 'JSON_FORMAT_UNKNOWN',
+								  number: 0
+								},
+							      'EnumValueDescriptorProto'{
+								  name: 'ALLOW',
+								  number: 1
+								},
+							      'EnumValueDescriptorProto'{
+								  name: 'LEGACY_BEST_EFFORT',
+								  number: 2
+								}
+							    ]
+						   }
+					       ],
+				    extension_range: [ 'ExtensionRange'{
+							   end: 1001,
+							   start: 1000
+							 },
+						       'ExtensionRange'{
+							   end: 1002,
+							   start: 1001
+							 },
+						       'ExtensionRange'{
+							   end: 10000,
+							   start: 9995
+							 }
+						     ],
+				    field: [ 'FieldDescriptorProto'{
+						 default_value: '',
+						 json_name: fieldPresence,
+						 label: 'LABEL_OPTIONAL',
+						 name: field_presence,
+						 number: 1,
+						 options: 'FieldOptions'{
+							      deprecated: '',
+							      edition: 'EditionDefaults'{
+									   edition: '2023',
+									   value: 'EXPLICIT'
+									 },
+							      packed: '',
+							      retention: 'RETENTION_RUNTIME',
+							      targets: [ 'TARGET_TYPE_FIELD',
+									 'TARGET_TYPE_FILE'
+								       ]
+							    },
+						 type: 'TYPE_ENUM',
+						 type_name: '.google.protobuf.FeatureSet.FieldPresence'
+					       },
+					     'FieldDescriptorProto'{
+						 default_value: '',
+						 json_name: enumType,
+						 label: 'LABEL_OPTIONAL',
+						 name: enum_type,
+						 number: 2,
+						 options: 'FieldOptions'{
+							      deprecated: '',
+							      edition: 'EditionDefaults'{
+									   edition: '2023',
+									   value: 'OPEN'
+									 },
+							      packed: '',
+							      retention: 'RETENTION_RUNTIME',
+							      targets: [ 'TARGET_TYPE_ENUM',
+									 'TARGET_TYPE_FILE'
+								       ]
+							    },
+						 type: 'TYPE_ENUM',
+						 type_name: '.google.protobuf.FeatureSet.EnumType'
+					       },
+					     'FieldDescriptorProto'{
+						 default_value: '',
+						 json_name: repeatedFieldEncoding,
+						 label: 'LABEL_OPTIONAL',
+						 name: repeated_field_encoding,
+						 number: 3,
+						 options: 'FieldOptions'{
+							      deprecated: '',
+							      edition: 'EditionDefaults'{
+									   edition: '2023',
+									   value: 'PACKED'
+									 },
+							      packed: '',
+							      retention: 'RETENTION_RUNTIME',
+							      targets: [ 'TARGET_TYPE_FIELD',
+									 'TARGET_TYPE_FILE'
+								       ]
+							    },
+						 type: 'TYPE_ENUM',
+						 type_name: '.google.protobuf.FeatureSet.RepeatedFieldEncoding'
+					       },
+					     'FieldDescriptorProto'{
+						 default_value: '',
+						 json_name: stringFieldValidation,
+						 label: 'LABEL_OPTIONAL',
+						 name: string_field_validation,
+						 number: 4,
+						 options: 'FieldOptions'{
+							      deprecated: '',
+							      edition: 'EditionDefaults'{
+									   edition: '2023',
+									   value: 'MANDATORY'
+									 },
+							      packed: '',
+							      retention: 'RETENTION_RUNTIME',
+							      targets: [ 'TARGET_TYPE_FIELD',
+									 'TARGET_TYPE_FILE'
+								       ]
+							    },
+						 type: 'TYPE_ENUM',
+						 type_name: '.google.protobuf.FeatureSet.StringFieldValidation'
+					       },
+					     'FieldDescriptorProto'{
+						 default_value: '',
+						 json_name: messageEncoding,
+						 label: 'LABEL_OPTIONAL',
+						 name: message_encoding,
+						 number: 5,
+						 options: 'FieldOptions'{
+							      deprecated: '',
+							      edition: 'EditionDefaults'{
+									   edition: '2023',
+									   value: 'LENGTH_PREFIXED'
+									 },
+							      packed: '',
+							      retention: 'RETENTION_RUNTIME',
+							      targets: [ 'TARGET_TYPE_FIELD',
+									 'TARGET_TYPE_FILE'
+								       ]
+							    },
+						 type: 'TYPE_ENUM',
+						 type_name: '.google.protobuf.FeatureSet.MessageEncoding'
+					       },
+					     'FieldDescriptorProto'{
+						 default_value: '',
+						 json_name: jsonFormat,
+						 label: 'LABEL_OPTIONAL',
+						 name: json_format,
+						 number: 6,
+						 options: 'FieldOptions'{
+							      deprecated: '',
+							      edition: 'EditionDefaults'{
+									   edition: '2023',
+									   value: 'ALLOW'
+									 },
+							      packed: '',
+							      retention: 'RETENTION_RUNTIME',
+							      targets: [ 'TARGET_TYPE_MESSAGE',
+									 'TARGET_TYPE_ENUM',
+									 'TARGET_TYPE_FILE'
+								       ]
+							    },
+						 type: 'TYPE_ENUM',
+						 type_name: '.google.protobuf.FeatureSet.JsonFormat'
+					       },
+					     'FieldDescriptorProto'{
+						 default_value: '',
+						 json_name: rawFeatures,
+						 label: 'LABEL_OPTIONAL',
+						 name: raw_features,
+						 number: 999,
+						 options: 'FieldOptions'{
+							      deprecated: '',
+							      edition: 'EditionDefaults'{},
+							      packed: '',
+							      retention: '',
+							      targets: [ 'TARGET_TYPE_UNKNOWN'
+								       ]
+							    },
+						 type: 'TYPE_MESSAGE',
+						 type_name: '.google.protobuf.FeatureSet'
+					       }
+					   ],
+				    name: 'FeatureSet',
+				    nested_type: [],
+				    reserved_range: []
+				  },
+				'DescriptorProto'{
 				    enum_type: [],
 				    extension_range: [],
 				    field: [ 'FieldDescriptorProto'{
@@ -1668,7 +2326,10 @@ descriptor_set(
 								    number: 1,
 								    options: 'FieldOptions'{
 										 deprecated: '',
-										 packed: true
+										 edition: 'EditionDefaults'{},
+										 packed: true,
+										 retention: '',
+										 targets: []
 									       },
 								    type: 'TYPE_INT32',
 								    type_name: ''
@@ -1681,7 +2342,10 @@ descriptor_set(
 								    number: 2,
 								    options: 'FieldOptions'{
 										 deprecated: '',
-										 packed: true
+										 edition: 'EditionDefaults'{},
+										 packed: true,
+										 retention: '',
+										 targets: []
 									       },
 								    type: 'TYPE_INT32',
 								    type_name: ''
@@ -1740,7 +2404,23 @@ descriptor_set(
 					   ],
 				    name: 'GeneratedCodeInfo',
 				    nested_type: [ 'DescriptorProto'{
-						       enum_type: [],
+						       enum_type: [ 'EnumDescriptorProto'{
+									name: 'Semantic',
+									value: [ 'EnumValueDescriptorProto'{
+										     name: 'NONE',
+										     number: 0
+										   },
+										 'EnumValueDescriptorProto'{
+										     name: 'SET',
+										     number: 1
+										   },
+										 'EnumValueDescriptorProto'{
+										     name: 'ALIAS',
+										     number: 2
+										   }
+									       ]
+								      }
+								  ],
 						       extension_range: [],
 						       field: [ 'FieldDescriptorProto'{
 								    default_value: '',
@@ -1750,7 +2430,10 @@ descriptor_set(
 								    number: 1,
 								    options: 'FieldOptions'{
 										 deprecated: '',
-										 packed: true
+										 edition: 'EditionDefaults'{},
+										 packed: true,
+										 retention: '',
+										 targets: []
 									       },
 								    type: 'TYPE_INT32',
 								    type_name: ''
@@ -1784,6 +2467,16 @@ descriptor_set(
 								    options: 'FieldOptions'{},
 								    type: 'TYPE_INT32',
 								    type_name: ''
+								  },
+								'FieldDescriptorProto'{
+								    default_value: '',
+								    json_name: semantic,
+								    label: 'LABEL_OPTIONAL',
+								    name: semantic,
+								    number: 5,
+								    options: 'FieldOptions'{},
+								    type: 'TYPE_ENUM',
+								    type_name: '.google.protobuf.GeneratedCodeInfo.Annotation.Semantic'
 								  }
 							      ],
 						       name: 'Annotation',
@@ -1794,7 +2487,7 @@ descriptor_set(
 				    reserved_range: []
 				  }
 			      ],
-		name: 'descriptor.proto',
+		name: 'google/protobuf/descriptor.proto',
 		options: 'FileOptions'{
 			     cc_enable_arenas: true,
 			     csharp_namespace: 'Google.Protobuf.Reflection',
@@ -1805,215 +2498,6 @@ descriptor_set(
 			     optimize_for: 'SPEED'
 			   },
 		package: 'google.protobuf'
-	      },
-	    'FileDescriptorProto'{
-		dependency: 'google/protobuf/descriptor.proto',
-		message_type: [ 'DescriptorProto'{
-				    enum_type: [],
-				    extension_range: [],
-				    field: [ 'FieldDescriptorProto'{
-						 default_value: '',
-						 json_name: major,
-						 label: 'LABEL_OPTIONAL',
-						 name: major,
-						 number: 1,
-						 options: 'FieldOptions'{},
-						 type: 'TYPE_INT32',
-						 type_name: ''
-					       },
-					     'FieldDescriptorProto'{
-						 default_value: '',
-						 json_name: minor,
-						 label: 'LABEL_OPTIONAL',
-						 name: minor,
-						 number: 2,
-						 options: 'FieldOptions'{},
-						 type: 'TYPE_INT32',
-						 type_name: ''
-					       },
-					     'FieldDescriptorProto'{
-						 default_value: '',
-						 json_name: patch,
-						 label: 'LABEL_OPTIONAL',
-						 name: patch,
-						 number: 3,
-						 options: 'FieldOptions'{},
-						 type: 'TYPE_INT32',
-						 type_name: ''
-					       },
-					     'FieldDescriptorProto'{
-						 default_value: '',
-						 json_name: suffix,
-						 label: 'LABEL_OPTIONAL',
-						 name: suffix,
-						 number: 4,
-						 options: 'FieldOptions'{},
-						 type: 'TYPE_STRING',
-						 type_name: ''
-					       }
-					   ],
-				    name: 'Version',
-				    nested_type: [],
-				    reserved_range: []
-				  },
-				'DescriptorProto'{
-				    enum_type: [],
-				    extension_range: [],
-				    field: [ 'FieldDescriptorProto'{
-						 default_value: '',
-						 json_name: fileToGenerate,
-						 label: 'LABEL_REPEATED',
-						 name: file_to_generate,
-						 number: 1,
-						 options: 'FieldOptions'{},
-						 type: 'TYPE_STRING',
-						 type_name: ''
-					       },
-					     'FieldDescriptorProto'{
-						 default_value: '',
-						 json_name: parameter,
-						 label: 'LABEL_OPTIONAL',
-						 name: parameter,
-						 number: 2,
-						 options: 'FieldOptions'{},
-						 type: 'TYPE_STRING',
-						 type_name: ''
-					       },
-					     'FieldDescriptorProto'{
-						 default_value: '',
-						 json_name: protoFile,
-						 label: 'LABEL_REPEATED',
-						 name: proto_file,
-						 number: 15,
-						 options: 'FieldOptions'{},
-						 type: 'TYPE_MESSAGE',
-						 type_name: '.google.protobuf.FileDescriptorProto'
-					       },
-					     'FieldDescriptorProto'{
-						 default_value: '',
-						 json_name: compilerVersion,
-						 label: 'LABEL_OPTIONAL',
-						 name: compiler_version,
-						 number: 3,
-						 options: 'FieldOptions'{},
-						 type: 'TYPE_MESSAGE',
-						 type_name: '.google.protobuf.compiler.Version'
-					       }
-					   ],
-				    name: 'CodeGeneratorRequest',
-				    nested_type: [],
-				    reserved_range: []
-				  },
-				'DescriptorProto'{
-				    enum_type: [ 'EnumDescriptorProto'{
-						     name: 'Feature',
-						     value: [ 'EnumValueDescriptorProto'{
-								  name: 'FEATURE_NONE',
-								  number: 0
-								},
-							      'EnumValueDescriptorProto'{
-								  name: 'FEATURE_PROTO3_OPTIONAL',
-								  number: 1
-								}
-							    ]
-						   }
-					       ],
-				    extension_range: [],
-				    field: [ 'FieldDescriptorProto'{
-						 default_value: '',
-						 json_name: error,
-						 label: 'LABEL_OPTIONAL',
-						 name: error,
-						 number: 1,
-						 options: 'FieldOptions'{},
-						 type: 'TYPE_STRING',
-						 type_name: ''
-					       },
-					     'FieldDescriptorProto'{
-						 default_value: '',
-						 json_name: supportedFeatures,
-						 label: 'LABEL_OPTIONAL',
-						 name: supported_features,
-						 number: 2,
-						 options: 'FieldOptions'{},
-						 type: 'TYPE_UINT64',
-						 type_name: ''
-					       },
-					     'FieldDescriptorProto'{
-						 default_value: '',
-						 json_name: file,
-						 label: 'LABEL_REPEATED',
-						 name: file,
-						 number: 15,
-						 options: 'FieldOptions'{},
-						 type: 'TYPE_MESSAGE',
-						 type_name: '.google.protobuf.compiler.CodeGeneratorResponse.File'
-					       }
-					   ],
-				    name: 'CodeGeneratorResponse',
-				    nested_type: [ 'DescriptorProto'{
-						       enum_type: [],
-						       extension_range: [],
-						       field: [ 'FieldDescriptorProto'{
-								    default_value: '',
-								    json_name: name,
-								    label: 'LABEL_OPTIONAL',
-								    name: name,
-								    number: 1,
-								    options: 'FieldOptions'{},
-								    type: 'TYPE_STRING',
-								    type_name: ''
-								  },
-								'FieldDescriptorProto'{
-								    default_value: '',
-								    json_name: insertionPoint,
-								    label: 'LABEL_OPTIONAL',
-								    name: insertion_point,
-								    number: 2,
-								    options: 'FieldOptions'{},
-								    type: 'TYPE_STRING',
-								    type_name: ''
-								  },
-								'FieldDescriptorProto'{
-								    default_value: '',
-								    json_name: content,
-								    label: 'LABEL_OPTIONAL',
-								    name: content,
-								    number: 15,
-								    options: 'FieldOptions'{},
-								    type: 'TYPE_STRING',
-								    type_name: ''
-								  },
-								'FieldDescriptorProto'{
-								    default_value: '',
-								    json_name: generatedCodeInfo,
-								    label: 'LABEL_OPTIONAL',
-								    name: generated_code_info,
-								    number: 16,
-								    options: 'FieldOptions'{},
-								    type: 'TYPE_MESSAGE',
-								    type_name: '.google.protobuf.GeneratedCodeInfo'
-								  }
-							      ],
-						       name: 'File',
-						       nested_type: [],
-						       reserved_range: []
-						     }
-						 ],
-				    reserved_range: []
-				  }
-			      ],
-		name: 'plugin.proto',
-		options: 'FileOptions'{
-			     cc_enable_arenas: '',
-			     csharp_namespace: '',
-			     go_package: 'google.golang.org/protobuf/types/pluginpb',
-			     java_outer_classname: 'PluginProtos',
-			     java_package: 'com.google.protobuf.compiler',
-			     objc_class_prefix: '',
-			     optimize_for: ''
-			   },
-		package: 'google.protobuf.compiler'
 	      }
 	  ]
   }

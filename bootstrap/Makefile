@@ -9,7 +9,7 @@
 # Assumes that you have downloaded
 # https://github.com/protocolbuffers/protobuf (or
 # git@github.com:protocolbuffers/protobuf.git) and built it following
-# the instructions. If you prefer to download (either by installing
+# the instructions. If you prefer to install (either by installing
 # the package `protobuf-compiler` the main Ubuntu or Debian
 # respository, or from
 # https://developers.google.com/protocol-buffers/docs/downloads), that
@@ -27,6 +27,14 @@
 
 # For naming conventions - see README.md section "descriptor.proto and friends"
 
+# Flow of commands / files:
+#   for F in compiler/plugin descritor:
+#     protoc <$F.proto     >$F.proto.wire
+#     protoc --decode      <$F.proto.wire     >$F.proto.wiredump
+#     protoc --decode_raw  <$F.proto.wire     >$F.proto.wirerawdump
+#     swipl parse_wiredump <$F.proto.wiredump >$F.proto.parse
+#     protoc               <$R.proto          >$F_pb.pl
+
 MAKEFLAGS=--warn-undefined-variables
 
 include common.mk
@@ -35,15 +43,17 @@ include common.mk
 .SUFFIXES: .proto .pl .py .wire .wiredump .wirerawdump .segment
 .PRECIOUS: %.wire %.wiredump %.segment %.parse %.pl %.py
 
+# You may not want to do .DELETE_ON_ERROR because it can be useful to
+# see how far a failed computation progressed (e.g., from protoc-gen-swipl)
 .DELETE_ON_ERROR: # Any non-zero return code deletes the target file(s)
 
-.PHONY: FORCE all all2 clean docs test_segment_messages bootstrap
+.PHONY: FORCE clean docs test test_segment_messages
 
-.DEFAULT_GOAL=all
+# See bootstrap.sh for the default goals.
+.DEFAULT_GOAL=
 
-all: bootstrap
-
-test: test_segment_messages $(PROTOC_GEN_PROLOG_PB)/google/protobuf/descriptor.proto.segment
+# TODO: remove test goal? Better to use ctest
+test: test_segment_messages $(PROTOC_GEN_PROLOG_PB)/google/protobuf/descriptor.proto.segment FORCE
 
 check_vars:
 	@echo "BUILD_BIN_DIR=       $(BUILD_BIN_DIR)"
@@ -57,47 +67,11 @@ check_vars:
 	@echo "OUTDIR=              $(OUTDIR)"
 	@echo "PATH=                $(PATH)"
 
-all2: \
-     $(PROTOC_GEN_PROLOG_PB)/include/google/protobuf/descriptor.proto.wire \
-     $(PROTOC_GEN_PROLOG_PB)/include/google/protobuf/descriptor.proto.wiredump \
-     $(PROTOC_GEN_PROLOG_PB)/include/google/protobuf/descriptor.proto.parse \
-     $(PROTOC_GEN_PROLOG_PB)/include/google/protobuf/descriptor.proto.segment \
-     $(PROTOC_GEN_PROLOG_PB)/include/google/protobuf/compiler/plugin.proto.wire \
-     $(PROTOC_GEN_PROLOG_PB)/include/google/protobuf/compiler/plugin.proto.wiredump \
-     $(PROTOC_GEN_PROLOG_PB)/include/google/protobuf/compiler/plugin.proto.parse \
-     $(PROTOC_GEN_PROLOG_PB)/include/google/protobuf/compiler/plugin.proto.segment \
-     bootstrap
-
-# The *_pb.qlf files aren't used (just the *_pb.pl files) but are
-# generated for the "--undefined" check.
-bootstrap: $(PROTOC_GEN_PROLOG_PB)/google/protobuf/descriptor_pb.qlf $(PROTOC_GEN_PROLOG_PB)/google/protobuf/compiler/plugin_pb.qlf
-	$(RM) $(PROTOC_GEN_PROLOG_PB)/google/protobuf/descriptor_pb.qlf $(PROTOC_GEN_PROLOG_PB)/google/protobuf/compiler/plugin_pb.qlf
-
-# %_pb.pl:: %.proto protoc-gen-swipl
-# 	@# TODO: s/OUT_PARAMETER/all/ ? (see comment in protoc-gen-swipl
-# 	@#                              with Request.parameter)
-# 	PATH=$(PATH_WITH_SWIPL) $(PROTOC) --version
-# 	# echo make_pb1a $@
-# 	# echo make_pb1b $*
-# 	# echo make_pb1c $<
-# 	# echo make_pb2 from $(@D) $(@F)
-# 	# echo make_pb3 from $(*D) $(*F)
-# 	@# The output file is derived from the "package" statement in the .proto file
-# 	@# So, for instance, if the input file is
-# 	@#    build/packages/protobufs/bootstrap/downloads/include/google/protobuf/descriptor.proto
-# 	@# which contains "package google.protobuf;", then the output file is
-# 	@#    build/packages/protobufs/bootstrap/downloads/include/google/protobuf/google/protobuf/descriptor_pb.pl
-# 	@# include/google/protobuf/compiler/plugin.proto has "google.protobuf.compiler;"
-# 	@# so its output file is
-# 	@#    build/packages/protobufs/bootstrap/downloads/include/google/protobuf/compiler/google/protobuf/compiler/plugin_pb.pl
-# 	PATH=$(PATH_WITH_SWIPL) $(PROTOC) $(PROTOC_I) --swipl_out='OUT_PARAMETER:$(@D)' \
-# 		--plugin=protoc-gen-swipl=$(realpath protoc-gen-swipl) $<
-
 # See https://swi-prolog.discourse.group/t/is-anyone-using-the-protobufs-compiler-plug-in-it-doesnt-do-the-right-thing-for-package-and-import/9877
 
 $(OUTDIR_PB)%_pb.pl: $(SRCDIR_PB)%.proto protoc-gen-swipl
 	@echo Generating $@ from $< with outdir_pb $(OUTDIR_PB) 
-	PATH=$(PATH_WITH_SWIPL) $(PROTOC) $(PROTOC_I) --swipl_out='OUT_PARAMETER:$(OUTDIR_PB)' \
+	PATH=$(PATH_WITH_SWIPL) $(PROTOC) $(PROTOC_I) --swipl_out=':$(OUTDIR_PB)' \
 		--plugin=protoc-gen-swipl=$(realpath protoc-gen-swipl) $<
 	@# If the "package" declaration in $< is not relative to
 	@# $(OUTDIR), or if the path to the source does not match the
@@ -105,20 +79,13 @@ $(OUTDIR_PB)%_pb.pl: $(SRCDIR_PB)%.proto protoc-gen-swipl
 	@# somewhere other than expected.
 	@test -f $@ || { echo "Error: $@ was not created"; exit 1; }
 
-# %/google/protobuf/descriptor_pb.pl: %/descriptor.proto protoc-gen-swiplw
-# 	PATH=$(PATH_WITH_SWIPL) $(PROTOC) $(PROTOC_I) --swipl_out='OUT_PARAMETER:$(<D)' \
-# 		--plugin=protoc-gen-swipl=$(realpath protoc-gen-swipl) $<
+$(OUTDIR_PB)/google/protobuf/compiler/plugin_pb.pl: $(OUTDIR_PB)/google/protobuf/descriptor_pb.pl
 
-
-# %/google/protobuf/compiler/plugin_pb.pl: %/plugin.proto protoc-gen-swipl
-# 	PATH=$(PATH_WITH_SWIPL) $(PROTOC) $(PROTOC_I) --swipl_out='OUT_PARAMETER:$(<D)' \
-# 		--plugin=protoc-gen-swipl=$(realpath protoc-gen-swipl) $<
-# 	@test -f $@ || { echo "Error: $@ was not created"; exit 1; }
-
-# $(PROTOC_GEN_PROLOG_PB)/google/protobuf/descriptor_pb.pl:: $OUTDIR/bootstrap/downloads/include/google/protobuf/compiler/google/protobuf/descriptor_pb.pl
+# The following don't seem to work
+# $(PROTOC_GEN_PROLOG_PB)/google/protobuf/descriptor_pb.pl: $(OUTDIR)/bootstrap/downloads/include/google/protobuf/compiler/google/protobuf/descriptor_pb.pl
 # 	cp -p $< $@
-
-# $(PROTOC_GEN_PROLOG_PB)/google/protobuf/compiler/plugin_pb.pl:: $OUTDIR/bootstrap/downloads/include/google/protobuf/compiler/google/protobuf/compiler/plugin_pb.pl
+#
+# $(PROTOC_GEN_PROLOG_PB)/google/protobuf/compiler/plugin_pb.pl: $(OUTDIR)/bootstrap/downloads/include/google/protobuf/compiler/google/protobuf/compiler/plugin_pb.pl
 # 	cp -p $< $@
 
 %.qlf: %.pl
@@ -127,12 +94,15 @@ $(OUTDIR_PB)%_pb.pl: $(SRCDIR_PB)%.proto protoc-gen-swipl
 		-p protobuf='library(ext/protobufs/protobufs/gen_pb)' \
 		-o $*.qlf -c $*.pl
 
-# Protobuf code generator for Python  # TODO: delete when no longer needed
-
-# TODO: should put the *_pb2.py files in a different directory
-$(PROTOC_GEN_PROLOG_PB)/%_pb2.py: $(PROTOC_INCLUDE)/%.proto
+%_pb2.py: %.proto
 	PATH=$(PATH_WITH_SWIPL) $(PROTOC) --version
-	PATH=$(PATH_WITH_SWIPL) $(PROTOC) $(PROTOC_I) --proto_path=$(PROTOC_INCLUDE) -v --python_out=$(PROTOC_GEN_PROLOG_PB) \
+	PATH=$(PATH_WITH_SWIPL) $(PROTOC) $(PROTOC_I) -v--python_out=$(PROTOC_GEN_PROLOG_PB) \
+		$(subst $(PROTOC_INCLUDE)/,,$<)
+
+$(OUTDIR_PB)%_pb2.pl: $(SRCDIR_PB)%.proto protoc-gen-swipl
+	@echo Generating $@ from $< with outdir_pb $(OUTDIR_PB) 
+	PATH=$(PATH_WITH_SWIPL) $(PROTOC) --version
+	PATH=$(PATH_WITH_SWIPL) $(PROTOC) $(PROTOC_I) --python_out=$(PROTOC_GEN_PROLOG_PB) \
 		$(subst $(PROTOC_INCLUDE)/,,$<)
 
 %.proto.wire: %.proto $(PROTOC)
@@ -141,7 +111,9 @@ $(PROTOC_GEN_PROLOG_PB)/%_pb2.py: $(PROTOC_INCLUDE)/%.proto
 
 # Run the protobuf_segment_messages test.
 # See also rules descriptor.proto.wirerawdump, descriptor.proto.wiredump
-test_segment_messages: $(PROTOC_GEN_PROLOG_PB)/google/protobuf/descriptor.proto.wire tests.pl
+test_segment_messages: \
+            $(PROTOC_GEN_PROLOG_PB)/downloads/include/google/protobuf/descriptor.proto.wire
+            tests.pl
 	$(SWIPL) -g "test_segment_messages('$(PROTOC_GEN_PROLOG_PB)/google/protobuf/descriptor.proto.wire')" -g halt tests.pl
 
 %.proto.wiredump: %.proto.wire $(PROTOC)
