@@ -16,7 +16,10 @@ PATH_WITH_SWIPL?=$(realpath -s $(BUILD_BIN_DIR)):$$PATH
 PROTOC_DOTDOT:=$(realpath -s $(dir $(shell which protoc))/..)
 PROTOC_INCLUDE=$(PROTOC_DOTDOT)/include
 PROTOC_LIB:=$(PROTOC_DOTDOT)/lib
+<<<<<<< Updated upstream
 
+=======
+>>>>>>> Stashed changes
 PROTOC_GEN_PROLOG_PB=gen_pb
 
 # If SHELL is bash, can use `type -p protoc` instead of `which protoc`

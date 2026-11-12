@@ -71,16 +71,15 @@
             % protobuf_tag_type//2
           ]).
 
-:- use_module(library(apply_macros)).  % autoload(library(apply), [maplist/3, foldl/4]).
-:- autoload(library(error), [must_be/2, domain_error/2, existence_error/2]).
+:- use_module(library(apply_macros)).  % expands maplist/3 TODO: foldl/4]).
+:- autoload(library(apply), [maplist/3, foldl/4]).
+:- autoload(library(error), [must_be/2, domain_error/2, representation_error/3]).
 :- autoload(library(lists), [append/3]).
 :- autoload(library(utf8), [utf8_codes//1]).
 :- autoload(library(dif), [dif/2]).
 :- autoload(library(dcg/high_order), [sequence//2]).
 :- autoload(library(when), [when/2]).
-:- use_module(library(debug), [assertion/1]). % TODO: remove
-
-:- set_prolog_flag(optimise, true). % For arithmetic using is/2.
+% :- autoload(library(debug), [assertion/1]). % TODO: remove
 
 /** <module> Google's Protocol Buffers ("protobufs")
 
@@ -218,12 +217,13 @@ installed at
 % @error version_error(Module-Version) you need to recompile the =Module=
 %        with a newer version of =|protoc|=.
 protobuf_parse_from_codes(WireCodes, MessageType0, Term) :-
-    verify_version,
     must_be(ground, MessageType0),
     (   proto_meta_normalize(MessageType0, MessageType)
     ->  true
-    ;   existence_error(protobuf_package, MessageType0)
+    ;   MessageType = MessageType0
+        % domain_error(protobuf_package, normalize:MessageType0)
     ),
+    verify_protoc_gen_version(MessageType),
     protobuf_segment_message(Segments, WireCodes),
     % protobuf_segment_message/2 can leave choicepoints, backtracking
     % through all the possibilities would have combinatoric explosion;
@@ -235,11 +235,18 @@ protobuf_parse_from_codes(WireCodes, MessageType0, Term) :-
     combine_fields(MsgFields, MessageType{}, Term),
     !. % TODO: remove? - but proto_meta might have left choicepoints if loaded twice
 
-verify_version :-
-    (   protoc_gen_swipl_version(Module, Version),
+% Note: protoc_gen_swipl_version/2 is mis-named ... it actually checks
+%       whether the version of protoc-gen-swipl matches what's
+%       expected here. The version is changed only if the generated
+%       predicates change (e.g., adding a parameter to a predicate,
+%       adding a new predicate).
+verify_protoc_gen_version(MessageType) :-
+    (   protoc_gen_swipl_version(ProtoFile, Version),
         Version @< [0,9,1] % This must be sync-ed with changes to protoc-gen-swipl
-    ->  throw(error(version_error(Module-Version), _))
-    ;   true
+    ->  representation_error(parse_protobufs_version(MessageType, protobufs_version=Version, proto_file=ProtoFile))
+    ;   protoc_gen_swipl_version(_, _)
+    ->  true
+    ;   representation_error(parse_protobufs_version(MessageType, 'missing protoc_gen_swipl_version'))
     ).
 
 %! protobuf_serialize_to_codes(+Term:dict, -MessageType:atom, -WireCodes:list(int)) is det.
@@ -272,15 +279,17 @@ verify_version :-
 % @param WireCodes Wire format of the message, which can be output using
 %        =|format('~s', [WireCodes])|=.
 % @see [library(protobufs): Google's Protocol Buffers](#protobufs-serialize-to-codes)
-% @error version_error(Module-Version) you need to recompile the =Module=
-%        with a newer version of =|protoc|=.
+% @error representation_error(MessageType,protobufs_version=Version, proto_file=ProtoFile)
+%        you need to recompile the =ProtoFile= with a newer version of of
+%        =|library(protobufs)|=.
 % @error existence_error if a field can't be found in the meta-data
 protobuf_serialize_to_codes(Term, MessageType0, WireCodes) :-
     verify_version,
     must_be(ground, MessageType0),
     (   proto_meta_normalize(MessageType0, MessageType)
     ->  true
-    ;   existence_error(protobuf_package, MessageType0)
+    ;   MessageType = MessageType0
+        % domain_error(protobuf_package, normalize:MessageType0)
     ),
     term_to_segments(Term, MessageType, Segments),
     !, % TODO: remove
@@ -888,7 +897,7 @@ packed_option(unsigned,  Items, varint(Items)).
 %        string(10, "inputType"),
 %        length_delimited(10,[105,110,112,117,116,84,121,112,101])).
 % ?- forall(protobuf_segment_convert(string(1999,"\x1\\x0\\x0\\x0\\x2\\x0\\x0\\x0\"),Z), writeln(Z)).
-%       string(1999,      )
+%       string(1999,'\x00\\x00\\x00\\x00\\x00\\x00\')
 %       packed(1999,fixed64([8589934593]))
 %       packed(1999,fixed32([1,2]))
 %       packed(1999,varint([1,0,0,0,2,0,0,0]))
@@ -1116,7 +1125,6 @@ uint32_int32_when(Uint32, Int32) :-
 
 % Reversed argument ordering for maplist/3
 int32_uint32_when(Int32, Uint32) :-
-
     uint32_int32_when(Uint32, Int32).
 
 %! int64_float64_when(?Int64:integer, ?Float64:float) is det.
@@ -1165,6 +1173,8 @@ int32_float32_when(Int32, Float32) :-
 % The protoc plugin generates the following facts (all starting with "proto_meta_").
 % The are documented in protoc-gen-swipl and in the overview section.
 
+:- multifile protobufs:protoc_gen_swipl_version/2.
+
 :- multifile
      proto_meta_normalize/2,              % (Unnormalized, Normalized)
      proto_meta_package/3,                % (Package, FileName, Options)
@@ -1189,7 +1199,7 @@ proto_meta_enum_value_when(ContextType, EnumValue, IntValue) :-
 proto_meta_enum_value_(ContextType, EnumValue, IntValue) :-
     (   proto_meta_enum_value(ContextType, EnumValue, IntValue)
     ->  true
-    ;   existence_error(ContextType, EnumValue-IntValue)
+    ;   domain_error(ContextType, enum:EnumValue-IntValue)
     ).
 
 :- det(segment_to_term/3).
@@ -1199,6 +1209,7 @@ proto_meta_enum_value_(ContextType, EnumValue, IntValue) :-
 % TODO: if performance is an issue, this code can be combined with
 %       protobuf_segment_message/2 (and thereby avoid the use of protobuf_segment_convert/2)
 segment_to_term(ContextType0, Segment, FieldAndValue) =>
+    % TODO: (   (   ContextType0 == '.google.protobuf.FieldOptions', Segment==varint(17,2)) -> gtrace ; true ),
     segment_type_tag(Segment, _, Tag),
     field_and_type(ContextType0, Tag, FieldName, _FqnName, ContextType, RepeatOptional, Type),
     (   RepeatOptional = repeat_packed
@@ -1356,6 +1367,9 @@ convert_segment('TYPE_SINT64', _ContextType, Tag, Segment0, Value) =>
     Segment = varint(Tag,Value0),
     int64_zigzag_when(Value, Value0),
     protobuf_segment_convert(Segment0, Segment), !.
+convert_segment(Type, ContextType, _Tag, Segment0, Value) =>
+    Type = '<Type>'(T),
+    Value = '<Type>'(ContextType,T,Segment0).
 
 convert_enum(ContextType, Enum, Uint) :-
     uint64_int64_when(Uint, Int),
@@ -1448,14 +1462,19 @@ combine_fields_repeat(Fields, _Field, Values, RestFields) => Values = [], RestFi
 %! field_and_type(+ContextType:atom, +Tag:int, -FieldName:atom, -FqnName:atom, -ContextType2:atom, -RepeatOptional:atom, -Type:atom) is det.
 % Lookup a =ContextType= and =Tag= to get the field name, type, etc.
 field_and_type(ContextType, Tag, FieldName, FqnName, ContextType2, RepeatOptional, Type) =>
-    assertion(ground(ContextType)), % TODO: remove
-    assertion(ground(Tag)), % TODO: remove
+    % assertion(ground(ContextType)), % TODO: remove
+    % assertion(ground(Tag)), % TODO: remove
     (   proto_meta_field_name(ContextType, Tag, FieldName, FqnName),
         proto_meta_field_type_name(FqnName, ContextType2),
         fqn_repeat_optional(FqnName, RepeatOptional),
         proto_meta_field_type(FqnName, Type)
-    ->  true % Remove choicepoint, if JITI didn't do the right thing.
-    ;   existence_error(ContextType, Tag)
+    ->  true  % Remove choicepoint, if JITI did not do the right thing
+    ;   FieldName='<FieldName>',
+        FqnName='<FqnName>',
+        ContextType2=ContextType,
+        RepeatOptional=norepeat,
+        Type='<Type>'(Tag)
+        % domain_error(ContextType, field_and_type:Tag)
     ).
 
 %! fqn_repeat_optional(+FqnName:atom, -RepeatOptional:atom) is det.
@@ -1463,7 +1482,7 @@ field_and_type(ContextType, Tag, FieldName, FqnName, ContextType2, RepeatOptiona
 % and set RepeatOptional to one of
 % =norepeat=, =repeat=, =repeat_packed=.
 fqn_repeat_optional(FqnName, RepeatOptional) =>
-    % TODO: existence_error if \+ proto_meta_field_label
+    % TODO: domain_error if \+ proto_meta_field_label
     proto_meta_field_label(FqnName, LabelRepeatOptional),
     (   LabelRepeatOptional = 'LABEL_REPEATED',
         proto_meta_field_option_packed(FqnName)
@@ -1509,7 +1528,7 @@ field_segment(MessageType, FieldName-Value, Segment) :-
         proto_meta_field_type_name(FieldFqn, FieldTypeName),
         proto_meta_field_label(FieldFqn, Label)
     ->  true  % Remove choicepoint, if JITI didn't do the right thing.
-    ;   existence_error(MessageType, FieldName-Value)
+    ;   domain_error(MessageType, field_segment:FieldName-Value)
     ),
     (   proto_meta_field_option_packed(FieldFqn)
     ->  Packed = packed
@@ -1564,8 +1583,11 @@ protobuf_field_is_map(MessageType0, FieldName) :-
     proto_meta_field_label(FieldFqn, 'LABEL_REPEATED'),
     proto_meta_field_type_name(FieldFqn, FieldTypeName),
     proto_meta_message_type_map_entry(FieldTypeName),
-    assertion(proto_meta_field_name(FieldTypeName, 1, key, _)),
-    assertion(proto_meta_field_name(FieldTypeName, 2, value, _)),
+    (   proto_meta_field_name(FieldTypeName, 1, key, _),
+        proto_meta_field_name(FieldTypeName, 2, value, _)
+    ->  true
+    ;   domain_error(proto_meta_field_name, 'key,value not 1,2')
+    ),
     !.
 
 %! protobuf_map_pairs(+ProtobufTermList:list, ?DictTag:atom, ?Pairs) is det.

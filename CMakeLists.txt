@@ -1,8 +1,14 @@
 cmake_minimum_required(VERSION 3.10)
 project(swipl-protobufs)
 
+include(FetchContent)
 include("../cmake/PrologPackage.cmake")
 
+<<<<<<< Updated upstream
+=======
+set(PROTOC_VERSION "24.4") # https://github.com/protocolbuffers/protobuf/releases?page=9#release-v24.4
+
+>>>>>>> Stashed changes
 AC_CHECK_HEADERS(sys/types.h)
 
 configure_file(config.h.cmake config.h)
@@ -110,9 +116,6 @@ test_libs(protobufs
               bootstrap demo interop
               )
 
-find_program(PROG_PROTOC protoc)
-find_program(PKG_CONFIG pkg-config)
-
 # TODO: check minimal versions of protoc, python3, pip protobuf
 
 find_program(PROG_PYTHON NAMES python3 python)
@@ -123,12 +126,56 @@ if(PROG_PYTHON)
     ERROR_QUIET)
 endif()
 
+<<<<<<< Updated upstream
 # TODO: The protobuf tests leave stuff in the source directories
 #       These can be removed by:
 #           for d in interop demo bootstrap; do make -C $d clean; done
 #          (also: "git clean -dxf", but that's dangerous)
+=======
+if(BUILD_PROTOBUFS_PROTOC)
+  # We could test for bootstrap/downloads/{bin/protoc,include/google/protobuf/{descriptor.proto,compiler/plugin.proto)}}
+  # existing, but this will do the wrong thing if PROTOC_VERSION changes,
+  # so depend on cmake to cache downloads (it probably doesn't).
+  block()
+    message(STATUS "Downloading Google protobuf files to ${CMAKE_CURRENT_BINARY_DIR}/download_protobuf_compiler-src")
+    set(FETCHCONTENT_BASE_DIR ${CMAKE_CURRENT_BINARY_DIR})
+    FetchContent_Declare(
+      download_protobuf_compiler
+      # URL_HASH ...
+      DOWNLOAD_EXTRACT_TIMESTAMP ON
+      LOG_DOWNLOAD ON
+      URL https://github.com/protocolbuffers/protobuf/releases/download/v${PROTOC_VERSION}/protoc-${PROTOC_VERSION}-linux-x86_64.zip
+    )
+    FetchContent_MakeAvailable(download_protobuf_compiler)
+    add_custom_command(
+      COMMENT "Bootstrapping protoc-gen-swipl in ${CMAKE_CURRENT_BINARY_DIR}"
+      DEPENDEES download_protobuf_compiler
+      # DEPENDS download_protobuf_compiler-src/downloads/bin/protoc
+      #         download_protobuf_compiler-src/downloads/include/google/protobuf/descriptor.proto
+      #         download_protobuf_compiler-src/downloads/include/google/protobuf/compiler/plugin.proto
+      OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/bootstrap/protoc-gen-swipl
+      COMMAND cmake -E make_directory "${CMAKE_CURRENT_BINARY_DIR}/bootstrap/gen_pb"
+      COMMAND cmake -E copy_directory "${CMAKE_CURRENT_BINARY_DIR}/download_protobuf_compiler-src"
+                                      "${CMAKE_CURRENT_BINARY_DIR}/bootstrap/downloads"
+      COMMAND cmake -E copy_directory "${CMAKE_CURRENT_SOURCE_DIR}/bootstrap/gen_pb"
+                                      "${CMAKE_CURRENT_BINARY_DIR}/bootstrap/gen_pb"
+      COMMAND ${BASH_EXE}
+                ${CMAKE_CURRENT_SOURCE_DIR}/bootstrap/bootstrap.sh
+                  ${PROTOC_VERSION}
+                  ${CMAKE_CURRENT_SOURCE_DIR}
+                  ${CMAKE_CURRENT_BINARY_DIR}
+      DEPENDS core prolog_home
+      VERBATIM COMMAND_EXPAND_LISTS
+      )
+    add_custom_target(
+         bootstrap-protoc-gen-swipl ALL
+         DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/bootstrap/protoc-gen-swipl)
+    endblock()
+endif()
+
+>>>>>>> Stashed changes
 if(BUILD_TESTING AND TEST_PROTOBUFS_PROTOC)
-  if(PROG_PROTOC AND PKG_CONFIG AND "${python3_protobuf}" EQUAL "0")
+  if(PKG_CONFIG AND "${python3_protobuf}" EQUAL "0")
       find_program(BASH_EXE bash REQUIRED)
       add_test(NAME "${SWIPL_PKG}:bootstrap"
                COMMAND ${BASH_EXE} ${CMAKE_CURRENT_SOURCE_DIR}/test_bootstrap.sh ${PROG_SWIPL} ${CMAKE_CURRENT_SOURCE_DIR}/bootstrap)
@@ -144,7 +191,6 @@ if(BUILD_TESTING AND TEST_PROTOBUFS_PROTOC)
       message(WARNING "Some ${SWIPL_PKG} tests not run because of missing pkg-config, protoc, or python/protobuf")
       message(WARNING "See demo/README.md for how to set up the build and test environment")
       message(WARNING "pkg-config: ${PKG_CONFIG}")
-      message(WARNING "protoc: ${PROG_PROTOC}")
       message(WARNING "python3_protobuf: ${python3_protobuf}")
   endif()
 else()
