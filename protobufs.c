@@ -125,7 +125,7 @@ uint32_codes(term_t Number, term_t Codes)
       return PL_unify_uint64(Number, val.asUnsignedNumber);
     } else
     {
-      return PL_type_error("list", Codes);
+      return PL_type_error("list[4]", Codes);
     }
   } else
   {
@@ -165,7 +165,7 @@ int32_codes(term_t Number, term_t Codes)
       return PL_unify_integer(Number, val.asSignedNumber);
     } else
     {
-      return PL_type_error("list", Codes);
+      return PL_type_error("list[4]", Codes);
     }
   } else
   {
@@ -203,7 +203,7 @@ uint64_codes(term_t Number, term_t Codes)
       return PL_unify_uint64(Number, val.asUnsignedNumber);
     } else
     {
-      return PL_type_error("list", Codes);
+      return PL_type_error("list[8]", Codes);
     }
   } else
   {
@@ -243,7 +243,7 @@ int64_codes(term_t Number, term_t Codes)
       return PL_unify_int64(Number, val.asSignedNumber);
     } else
     {
-      return PL_type_error("list", Codes);
+      return PL_type_error("list[8]", Codes);
     }
   } else
   {

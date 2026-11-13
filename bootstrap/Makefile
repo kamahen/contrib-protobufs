@@ -9,7 +9,7 @@
 # Assumes that you have downloaded
 # https://github.com/protocolbuffers/protobuf (or
 # git@github.com:protocolbuffers/protobuf.git) and built it following
-# the instructions. If you prefer to download (either by installing
+# the instructions. If you prefer to install (either by installing
 # the package `protobuf-compiler` the main Ubuntu or Debian
 # respository, or from
 # https://developers.google.com/protocol-buffers/docs/downloads), that
@@ -27,86 +27,107 @@
 
 # For naming conventions - see README.md section "descriptor.proto and friends"
 
+# Flow of commands / files:
+#   for F in compiler/plugin descritor:
+#     protoc <$F.proto     >$F.proto.wire
+#     protoc --decode      <$F.proto.wire     >$F.proto.wiredump
+#     protoc --decode_raw  <$F.proto.wire     >$F.proto.wirerawdump
+#     swipl parse_wiredump <$F.proto.wiredump >$F.proto.parse
+#     protoc               <$R.proto          >$F_pb.pl
+
 MAKEFLAGS=--warn-undefined-variables
 
 include common.mk
 
+# TODO: remove "PRECIOUS"
 .SUFFIXES: .proto .pl .py .wire .wiredump .wirerawdump .segment
+.PRECIOUS: %.wire %.wiredump %.segment %.parse %.pl %.py
 
+# You may not want to do .DELETE_ON_ERROR because it can be useful to
+# see how far a failed computation progressed (e.g., from protoc-gen-swipl)
 .DELETE_ON_ERROR: # Any non-zero return code deletes the target file(s)
 
-.PHONY: FORCE all all2 clean docs test_segment_messages bootstrap
+.PHONY: FORCE clean docs test test_segment_messages
 
-.DEFAULT_GOAL=all
+# See bootstrap.sh for the default goals.
+.DEFAULT_GOAL=
 
-all: bootstrap
+# TODO: remove test goal? Better to use ctest
+test: test_segment_messages $(PROTOC_GEN_PROLOG_PB)/google/protobuf/descriptor.proto.segment FORCE
 
-test: test_segment_messages $(PROTOC_GEN_PROLOG_PB)/google/protobuf/descriptor.proto.segment
+check_vars:
+	@echo "BUILD_BIN_DIR=       $(BUILD_BIN_DIR)"
+	@echo "SWIPL=               $(SWIPL)"
+	@echo "PROTOC=              $(PROTOC)"
+	@echo "PROTOC_INCLUDE=      $(PROTOC_INCLUDE)"
+	@echo "PROTOC_I=            $(PROTOC_I)"
+	@echo "PROTOC_GEN_PROLOG_PB=$(PROTOC_GEN_PROLOG_PB)"
+	@echo "PATH_WITH_SWIPL=     $(PATH_WITH_SWIPL)"
+	@echo "SRCDIR=              $(SRCDIR)"
+	@echo "OUTDIR=              $(OUTDIR)"
+	@echo "PATH=                $(PATH)"
 
-all2: \
-     $(PROTOC_GEN_PROLOG_PB)/google/protobuf/compiler/plugin.proto.wiredump \
-     $(PROTOC_GEN_PROLOG_PB)/google/protobuf/compiler/plugin.proto.wire \
-     $(PROTOC_GEN_PROLOG_PB)/google/protobuf/compiler/plugin.proto.parse \
-     $(PROTOC_GEN_PROLOG_PB)/google/protobuf/compiler/plugin.proto.segment \
-     $(PROTOC_GEN_PROLOG_PB)/google/protobuf/descriptor.proto.wiredump \
-     $(PROTOC_GEN_PROLOG_PB)/google/protobuf/descriptor.proto.wire \
-     $(PROTOC_GEN_PROLOG_PB)/google/protobuf/descriptor.proto.parse \
-     $(PROTOC_GEN_PROLOG_PB)/google/protobuf/descriptor.proto.segment \
-     bootstrap
+# See https://swi-prolog.discourse.group/t/is-anyone-using-the-protobufs-compiler-plug-in-it-doesnt-do-the-right-thing-for-package-and-import/9877
 
-# The *_pb.qlf files aren't used (just the *_pb.pl files)
-# but are generated for the "--undefined" check.
-bootstrap: $(PROTOC_GEN_PROLOG_PB)/google/protobuf/descriptor_pb.qlf $(PROTOC_GEN_PROLOG_PB)/google/protobuf/compiler/plugin_pb.qlf
-	$(RM) $(PROTOC_GEN_PROLOG_PB)/google/protobuf/descriptor_pb.qlf $(PROTOC_GEN_PROLOG_PB)/google/protobuf/compiler/plugin_pb.qlf
-
-%_pb.pl: %.proto protoc-gen-swipl
-	@# PATH=".:$$PATH" $(PROTOC) $(PROTOC_I) --swipl_out=. $<
-	@# TODO: s/OUT_PARAMETER/all/ ? (see comment in protoc-gen-swipl
-	@#                              with Request.parameter)
-	PATH=$(PATH_WITH_SWIPL) $(PROTOC) $(PROTOC_I) --swipl_out='OUT_PARAMETER':. \
+$(OUTDIR_PB)%_pb.pl: $(SRCDIR_PB)%.proto protoc-gen-swipl
+	@echo Generating $@ from $< with outdir_pb $(OUTDIR_PB) 
+	PATH=$(PATH_WITH_SWIPL) $(PROTOC) $(PROTOC_I) --swipl_out=':$(OUTDIR_PB)' \
 		--plugin=protoc-gen-swipl=$(realpath protoc-gen-swipl) $<
+	@# If the "package" declaration in $< is not relative to
+	@# $(OUTDIR), or if the path to the source does not match the
+	@# "package" declaration, then the _pb.pl file will be created
+	@# somewhere other than expected.
+	@test -f $@ || { echo "Error: $@ was not created"; exit 1; }
 
-$(PROTOC_GEN_PROLOG_PB)/%_pb.pl: $(PROTOC_INCLUDE)/%.proto protoc-gen-swipl
-	PATH=$(PATH_WITH_SWIPL) $(PROTOC) --version
-	PATH=$(PATH_WITH_SWIPL) $(PROTOC) -I$(PROTOC_INCLUDE) --swipl_out=$(PROTOC_GEN_PROLOG_PB) \
-		--plugin=protoc-gen-swipl=$(realpath protoc-gen-swipl) $(subst $(PROTOC_INCLUDE)/,,$<)
+$(OUTDIR_PB)/google/protobuf/compiler/plugin_pb.pl: $(OUTDIR_PB)/google/protobuf/descriptor_pb.pl
+
+# The following don't seem to work
+# $(PROTOC_GEN_PROLOG_PB)/google/protobuf/descriptor_pb.pl: $(OUTDIR)/bootstrap/downloads/include/google/protobuf/compiler/google/protobuf/descriptor_pb.pl
+# 	cp -p $< $@
+#
+# $(PROTOC_GEN_PROLOG_PB)/google/protobuf/compiler/plugin_pb.pl: $(OUTDIR)/bootstrap/downloads/include/google/protobuf/compiler/google/protobuf/compiler/plugin_pb.pl
+# 	cp -p $< $@
 
 %.qlf: %.pl
 	@# --undefined is for double-checking
-	$(SWIPL) --undefined=error --verbose=false -o $*.qlf -c <$*.pl
+	$(SWIPL) --undefined=error --verbose=false \
+		-p protobuf='library(ext/protobufs/protobufs/gen_pb)' \
+		-o $*.qlf -c $*.pl
 
-# Protobuf code generator for Python  # TODO: delete when no longer needed
-
-# TODO: should put the *_pb2.py files in a different directory
-$(PROTOC_GEN_PROLOG_PB)/%_pb2.py: $(PROTOC_INCLUDE)/%.proto
+%_pb2.py: %.proto
 	PATH=$(PATH_WITH_SWIPL) $(PROTOC) --version
-	PATH=$(PATH_WITH_SWIPL) $(PROTOC) $(PROTOC_I) -I$(PROTOC_INCLUDE) --python_out=$(PROTOC_GEN_PROLOG_PB) \
+	PATH=$(PATH_WITH_SWIPL) $(PROTOC) $(PROTOC_I) -v--python_out=$(PROTOC_GEN_PROLOG_PB) \
 		$(subst $(PROTOC_INCLUDE)/,,$<)
 
-# Make a binary protobuf msg file (see $(DESCRIPTOR_PROTO)) with a
-# FileDescriptorSet message, describing the .proto and all its
-# dependencies:
-$(PROTOC_GEN_PROLOG_PB)/%.proto.wire: $(PROTOC_INCLUDE)/%.proto
+$(OUTDIR_PB)%_pb2.pl: $(SRCDIR_PB)%.proto protoc-gen-swipl
+	@echo Generating $@ from $< with outdir_pb $(OUTDIR_PB) 
 	PATH=$(PATH_WITH_SWIPL) $(PROTOC) --version
-	PATH=$(PATH_WITH_SWIPL) $(PROTOC) -I$(PROTOC_INCLUDE) --include_imports --descriptor_set_out=$@ \
+	PATH=$(PATH_WITH_SWIPL) $(PROTOC) $(PROTOC_I) --python_out=$(PROTOC_GEN_PROLOG_PB) \
 		$(subst $(PROTOC_INCLUDE)/,,$<)
+
+%.proto.wire: %.proto $(PROTOC)
+	PATH=$(PATH_WITH_SWIPL) $(PROTOC) --version
+	PATH=$(PATH_WITH_SWIPL) $(PROTOC) --proto_path=$(PROTOC_INCLUDE) --include_imports --descriptor_set_out=$@ $<
 
 # Run the protobuf_segment_messages test.
 # See also rules descriptor.proto.wirerawdump, descriptor.proto.wiredump
-test_segment_messages: $(PROTOC_GEN_PROLOG_PB)/google/protobuf/descriptor.proto.wire tests.pl
+test_segment_messages: \
+            $(PROTOC_GEN_PROLOG_PB)/downloads/include/google/protobuf/descriptor.proto.wire
+            tests.pl
 	$(SWIPL) -g "test_segment_messages('$(PROTOC_GEN_PROLOG_PB)/google/protobuf/descriptor.proto.wire')" -g halt tests.pl
 
-%.proto.wiredump: %.proto.wire
+%.proto.wiredump: %.proto.wire $(PROTOC)
 	PATH=$(PATH_WITH_SWIPL) $(PROTOC) --version
-	PATH=$(PATH_WITH_SWIPL) $(PROTOC) -I$(PROTOC_INCLUDE) \
+	PATH=$(PATH_WITH_SWIPL) $(PROTOC) --proto_path=$(PROTOC_INCLUDE) \
 		--decode=google.protobuf.FileDescriptorSet \
 		google/protobuf/descriptor.proto \
 		<$*.proto.wire >$@
 
-%.proto.segment: descriptor_proto.pl descriptor_proto_expand.pl %.proto.wire
+%.proto.segment: %.proto.wire descriptor_proto.pl descriptor_proto_expand.pl
 	$(SWIPL) descriptor_proto.pl <$*.proto.wire >$@
 
 %.proto.parse: %.proto.wiredump parse_descriptor_proto_dump.pl
+	PWD=$(shell pwd)
 	$(SWIPL) -g "parse_wiredump('$*.proto.wiredump')" \
 		-g halt parse_descriptor_proto_dump.pl >$@
 
@@ -115,6 +136,7 @@ test_segment_messages: $(PROTOC_GEN_PROLOG_PB)/google/protobuf/descriptor.proto.
 
 clean:
 	$(RM) -r foo *.tmp *.o *.pb.cc *.pb.h *_pb2.py *_pb.pl *_pb0.pl doc/ ../TAGS \
+		$(PROTOC_GEN_PROLOG_PB)/include \
 		$(PROTOC_GEN_PROLOG_PB)/google/protobuf/*.proto.parse \
 		$(PROTOC_GEN_PROLOG_PB)/google/protobuf/*.proto.segment \
 		$(PROTOC_GEN_PROLOG_PB)/google/protobuf/*.proto.wire \
