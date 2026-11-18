@@ -20,7 +20,7 @@ message OneofMessage {
 
 // a map<...> creates a message that contains a Key and Value.
 // So, number_ints = {"one":1, "two":2} is equivalent to
-// '..MapMessage'{
+// '.MapMessage'{
 //     number_ints:[
 //          '.MapMessage.NumberIntsEntry'{key:"two",value:2},
 //          '.MapMessage.NumberIntsEntry'{key:"one",value:1}]}

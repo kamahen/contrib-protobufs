@@ -39,8 +39,8 @@
             protobuf_parse_from_codes/3, % +WireCodes, +MessageType, -Term
             protobuf_serialize_to_codes/3,  % +Term, +MessageType, -WireCodes
             protobuf_field_is_map/2, % +MessageType, +FieldName
-            protobuf_map_pairs/3 % ?ProtobufTermList, ?DictTag, ?Pairs
-
+            protobuf_map_pairs/3, % ?ProtobufTermList, ?DictTag, ?Pairs
+            verify_protoc_gen_version/1 % +MessageType
             % TODO: Restore the following to the public interface, if
             %       someone needs them.  For now, the tests directly specify
             %       them using, e.g. protobufs:uint32_codes(..., ...).
@@ -71,21 +71,23 @@
             % protobuf_tag_type//2
           ]).
 
-:- use_module(library(apply_macros)).  % autoload(library(apply), [maplist/3, foldl/4]).
-:- autoload(library(error),
-            [ must_be/2, domain_error/2, existence_error/2,
-              representation_error/1, syntax_error/1
-            ]).
+:- use_module(library(apply_macros)).  % maplist/3
+:- autoload(library(apply), [maplist/3, foldl/4]).
+:- autoload(library(error), [must_be/2, domain_error/2, representation_error/1, syntax_error/1]).
 :- autoload(library(lists), [append/3, append/2]).
 :- autoload(library(pairs), [group_pairs_by_key/2]).
 :- autoload(library(dif), [dif/2]).
 :- autoload(library(dcg/high_order), [sequence//2]).
 :- autoload(library(when), [when/2]).
-:- use_module(library(debug), [assertion/1]). % TODO: remove
 
-:- set_prolog_flag(optimise, true). % For arithmetic using is/2.
+% We assume that -O is used to create the library:
+% :- set_prolog_flag(optimise, true). % For arithmetic using is/2.
 
 :- create_prolog_flag(protobuf_max_depth, 100, [keep(true), type(integer)]).
+
+% For debugging a new version of protoc_gen_swipl (see bootstrap/README.md)
+% :- asserta(protobufs:protoc_debug).
+:- asserta((protobufs:protoc_debug :- fail)).
 
 /** <module> Google's Protocol Buffers ("protobufs")
 
@@ -224,19 +226,19 @@ installed at
 %        only for the top-level name given to protobuf_serialize_to_codes/3).
 % @param Term The generated term, as nested [dict](</pldoc/man?section=bidicts>)s.
 % @see  [library(protobufs): Google's Protocol Buffers](#protobufs-serialize-to-codes)
-% @error version_error(Module-Version) you need to recompile the =Module=
-%        with a newer version of =|protoc|=.
+% @error representation_error(parse_protobufs_version(...) you need to
+%        recompile the =Module= with a newer version of =|protoc|=.
 % @error resource_error(protobuf_max_depth(Max)) if messages are nested
 %        too deeply.
 % @error syntax_error(illegal_utf8_sequence) if a string field is not
 %        valid UTF-8.
 protobuf_parse_from_codes(WireCodes, MessageType0, Term) :-
-    verify_version,
     must_be(ground, MessageType0),
     (   proto_meta_normalize(MessageType0, MessageType)
     ->  true
-    ;   existence_error(protobuf_package, MessageType0)
+    ;   protobuf_parse_from_codes_error(MessageType0, MessageType)
     ),
+    verify_protoc_gen_version(MessageType),
     max_depth(MaxDepth),
     protobuf_segment_message(Segments, WireCodes, first(MaxDepth)),
     % protobuf_segment_message/2 can leave choicepoints, backtracking
@@ -249,11 +251,26 @@ protobuf_parse_from_codes(WireCodes, MessageType0, Term) :-
     combine_fields(MsgFields, MessageType{}, Term),
     !. % TODO: remove? - but proto_meta might have left choicepoints if loaded twice
 
-verify_version :-
-    (   protoc_gen_swipl_version(Module, Version),
-        Version @< [0,9,1] % This must be sync-ed with changes to protoc-gen-swipl
-    ->  throw(error(version_error(Module-Version), _))
-    ;   true
+:- if(protobufs:protoc_debug).
+protobuf_parse_from_codes_error(MessageType0, MessageType) :-
+    MessageType = MessageType0.
+:- else.
+protobuf_parse_from_codes_error(MessageType0, _MessageType) :-
+    representation_error(protobuf_package_normalize(MessageType0)).
+:- endif.
+
+% Note: protoc_gen_swipl_version/2 is mis-named ... it actually checks
+%       whether the version of protoc-gen-swipl matches what's
+%       expected here. The version is changed only if the generated
+%       predicates change (e.g., adding a parameter to a predicate,
+%       adding a new predicate).
+verify_protoc_gen_version(MessageType) :-
+    (   protobufs:protoc_gen_swipl_version(Module, Version), % from generated _pb.pl
+        Version @< [0,9,2] % This must be sync-ed with changes to protoc-gen-swipl
+    ->  representation_error(parse_protobufs_version(MessageType, Module, Version))
+    ;   protoc_gen_swipl_version(_, _)
+    ->  true
+    ;   representation_error(parse_protobufs_version(MessageType, 'missing protoc_gen_swipl_version'))
     ).
 
 %! protobuf_serialize_to_codes(+Term:dict, -MessageType:atom, -WireCodes:list(int)) is det.
@@ -286,20 +303,29 @@ verify_version :-
 % @param WireCodes Wire format of the message, which can be output using
 %        =|format('~s', [WireCodes])|=.
 % @see [library(protobufs): Google's Protocol Buffers](#protobufs-serialize-to-codes)
-% @error version_error(Module-Version) you need to recompile the =Module=
-%        with a newer version of =|protoc|=.
-% @error existence_error if a field can't be found in the meta-data
+% @error representation_error(parse_protobufs_version(Module, Version)
+%        you need to recompile the =|.proto|= file with =|protoc|= and a
+%        newer version of =|protoc_gen_swipl|=.
+% @error representation_error if a field can't be found in the meta-data
 protobuf_serialize_to_codes(Term, MessageType0, WireCodes) :-
-    verify_version,
+    verify_protoc_gen_version(MessageType0),
     must_be(ground, MessageType0),
     (   proto_meta_normalize(MessageType0, MessageType)
     ->  true
-    ;   existence_error(protobuf_package, MessageType0)
+    ;   protobuf_serialize_to_codes_error(MessageType0, MessageType)
     ),
     term_to_segments(Term, MessageType, Segments),
     !, % TODO: remove
     protobuf_segment_message(Segments, WireCodes),
     !. % TODO: remove? - but proto_meta might have left choicepoints if loaded twice
+
+:- if(protobufs:protoc_debug).
+protobuf_serialize_to_codes_error(MessageType0, MessageType) :-
+    MessageType = MessageType0.
+:- else.
+protobuf_serialize_to_codes_error(MessageType0, _MessageType) :-
+    representation_error(protobuf_package_normalize(MessageType0)).
+:- endif.
 
 %
 % Map wire type (atom) to its encoding (an int)
@@ -359,11 +385,6 @@ take_codes(N, [H|T], Codes, Rest1), N > 0 =>
     take_codes(N1, T, Codes1, Rest1).
 take_codes(_, _, _, _) =>
     fail.
-/*
-code_string(N, Codes) -->
-        { length(Codes, N) },
-        Codes, !.
-*/
 
 %
 % deal with Google's method of packing unsigned integers in variable
@@ -379,8 +400,8 @@ code_string(N, Codes) -->
 % Raises an error if =A= is negative or does not fit in 64 bits.
 % This is a low-level predicate; normally, you should use
 % template_message/2 and the appropriate template term.
-% e.g. phrase(protobuf_var_int(300), S) → S = [172,2]
-%      phrase(protobuf_var_int(A), [172,2]) → A = 300
+% e.g. phrase(protobuf_var_int(300), S) -> S = [172,2]
+%      phrase(protobuf_var_int(A), [172,2]) -> A = 300
 protobuf_var_int(X, Codes, Rest) :-
     nonvar(X),
     !,
@@ -407,15 +428,20 @@ var_int_encode(X, [A|Rest], Rest1) :-
 
 % var_int_cont(+Codes, +Shift, +X0, -X, -Rest)
 %
-% Decode the continuation bytes of a varint.  A varint encodes at
-% most 64 bits and thus has at most 10 bytes.
+% Decode the continuation bytes of a varint.  Each byte carries a 7 bit
+% payload and the high bit indicates more bytes follow.  A varint
+% encodes at most 64 bits, so it has at most 10 bytes (9*7 = 63 bits,
+% plus 1 bit from the 10th byte).  Shift is 7*(N-1) for the N-th byte,
+% so the 10th byte has Shift = 63 and may only be 0 or 1.  Longer or
+% larger encodings are rejected.
 
 var_int_cont([A|Rest], Shift, X0, X, Rest1) :-
-    Shift < 70, % 7 bit payload, maximum 10 bytes
     (   A < 128
-    ->  X is X0 + (A << Shift),
+    ->  ( Shift < 63 -> true ; A < 2 ),
+        X is X0 + (A << Shift),
         Rest1 = Rest
-    ;   X1 is X0 + ((A - 128) << Shift),
+    ;   Shift < 63,
+        X1 is X0 + ((A - 128) << Shift),
         Shift1 is Shift + 7,
         var_int_cont(Rest, Shift1, X1, X, Rest1)
     ).
@@ -974,8 +1000,8 @@ packed_option(unsigned,  Items, varint(Items)).
 % ?- protobuf_segment_convert(
 %        string(10, "inputType"),
 %        length_delimited(10,[105,110,112,117,116,84,121,112,101])).
-% ?- forall(protobuf_segment_convert(string(1999,"\x1\\x0\\x0\\x0\\x2\\x0\\x0\\x0\"),Z), writeln(Z)).
-%       string(1999,"\x00\\x00\\x00\\x00\\x00\\x00\")
+% ?- forall(protobuf_segment_convert(string(1999,"\x1\\x0\\x0\\x0\\x2\\x0\\x0\\x0\"),Z), (writeq(Z),nl)).
+%       string(1999,"\x1\\0\\0\\0\\x2\\0\\0\\0\")
 %       packed(1999,fixed64([8589934593]))
 %       packed(1999,fixed32([1,2]))
 %       packed(1999,varint([1,0,0,0,2,0,0,0]))
@@ -1308,7 +1334,7 @@ proto_meta_enum_value_when(ContextType, EnumValue, IntValue) :-
 proto_meta_enum_value_(ContextType, EnumValue, IntValue) :-
     (   proto_meta_enum_value(ContextType, EnumValue, IntValue)
     ->  true
-    ;   existence_error(ContextType, EnumValue-IntValue)
+    ;   representation_error(enum(ContextType, EnumValue-IntValue))
     ).
 
 :- det(segment_to_term/4).
@@ -1576,22 +1602,34 @@ put_repeated(Field-ValueLists, MsgDict0, MsgDict) :-
 %! field_and_type(+ContextType:atom, +Tag:int, -FieldName:atom, -FqnName:atom, -ContextType2:atom, -RepeatOptional:atom, -Type:atom) is det.
 % Lookup a =ContextType= and =Tag= to get the field name, type, etc.
 field_and_type(ContextType, Tag, FieldName, FqnName, ContextType2, RepeatOptional, Type) =>
-    assertion(ground(ContextType)), % TODO: remove
-    assertion(ground(Tag)), % TODO: remove
+    must_be(ground, ContextType),
+    must_be(ground, Tag),
     (   proto_meta_field_name(ContextType, Tag, FieldName, FqnName),
         proto_meta_field_type_name(FqnName, ContextType2),
         fqn_repeat_optional(FqnName, RepeatOptional),
         proto_meta_field_type(FqnName, Type)
     ->  true % Remove choicepoint, if JITI didn't do the right thing.
-    ;   existence_error(ContextType, Tag)
+    ;   field_and_type_error(FieldName, FqnName, ContextType, ContextType2, RepeatOptional, Type, Tag)
     ).
+
+:- if(protobufs:protoc_debug).
+field_and_type_error(FieldName, FqnName, ContextType, ContextType2, RepeatOptional, Type, Tag) :-
+    FieldName='<FieldName>',
+        FqnName='<FqnName>',
+        ContextType2=ContextType,
+        RepeatOptional=norepeat,
+    Type='<Type>'(Tag).
+:- else.
+field_and_type_error(_FieldName, _FqnName, ContextType, _ContextType2, _RepeatOptional, _Type, Tag) :-
+    representation_error(field_and_type(ContextType, Tag)).
+:- endif.
 
 %! fqn_repeat_optional(+FqnName:atom, -RepeatOptional:atom) is det.
 % Lookup up proto_meta_field_label(FqnName, _), proto_meta_field_option_packed(FqnName)
 % and set RepeatOptional to one of
 % =norepeat=, =repeat=, =repeat_packed=.
 fqn_repeat_optional(FqnName, RepeatOptional) =>
-    % TODO: existence_error if \+ proto_meta_field_label
+    % TODO: representation_error if \+ proto_meta_field_label
     proto_meta_field_label(FqnName, LabelRepeatOptional),
     (   LabelRepeatOptional = 'LABEL_REPEATED',
         proto_meta_field_option_packed(FqnName)
@@ -1637,7 +1675,7 @@ field_segment(MessageType, FieldName-Value, Segment) :-
         proto_meta_field_type_name(FieldFqn, FieldTypeName),
         proto_meta_field_label(FieldFqn, Label)
     ->  true  % Remove choicepoint, if JITI didn't do the right thing.
-    ;   existence_error(MessageType, FieldName-Value)
+    ;   representation_error(field_name(MessageType, FieldName-Value))
     ),
     (   proto_meta_field_option_packed(FieldFqn)
     ->  Packed = packed
@@ -1692,8 +1730,11 @@ protobuf_field_is_map(MessageType0, FieldName) :-
     proto_meta_field_label(FieldFqn, 'LABEL_REPEATED'),
     proto_meta_field_type_name(FieldFqn, FieldTypeName),
     proto_meta_message_type_map_entry(FieldTypeName),
-    assertion(proto_meta_field_name(FieldTypeName, 1, key, _)),
-    assertion(proto_meta_field_name(FieldTypeName, 2, value, _)),
+    (   proto_meta_field_name(FieldTypeName, 1, key, _),
+        proto_meta_field_name(FieldTypeName, 2, value, _)
+    ->  true
+    ;   throw(error(assertion_error(proto_meta_field_name, FieldTypeName), _))
+    ),
     !.
 
 %! protobuf_map_pairs(+ProtobufTermList:list, ?DictTag:atom, ?Pairs) is det.

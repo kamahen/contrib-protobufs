@@ -17,17 +17,19 @@
 :- set_prolog_flag(backtrace_depth,100).
 :- endif.
 
+:- asserta(user:file_search_path(protobufs, '.')).
+
 :- initialization(test_read_main, main).
 
 :- use_module(library(plunit)).
 :- use_module(library(debug), [assertion/1]).
 :- use_module(library(protobufs)).
 :- use_module(test_templates).
-:- use_module(test_pb).
-:- use_module(test2_pb).
-:- use_module(google/protobuf/unittest_pb).
-:- use_module(google/protobuf/unittest_import_pb).
-:- use_module(google/protobuf/unittest_import_public_pb).
+:- ensure_loaded(test_pb).
+:- ensure_loaded(test2_pb).
+:- ensure_loaded(google/protobuf/unittest_pb).
+:- ensure_loaded(google/protobuf/unittest_import_pb).
+:- ensure_loaded(google/protobuf/unittest_import_public_pb).
 
 % Not needed because we're using plunit:
 % :- set_prolog_flag(optimise_debug, false). % ensure assertion/1 is executed

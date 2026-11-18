@@ -1,5 +1,7 @@
 % -*- mode: Prolog -*-
 
+% *** This file is obsolute and will be deleted in future.
+
 % TODO: delete this file when all the logic has been moved to protoc-gen-swipl
 %       and everything has been completely bootstrapped.
 %
@@ -19,7 +21,8 @@
 
 :- use_module(library(dcg/basics)).
 :- use_module(library(dcg/high_order)).
-:- use_module(library(debug), [assertion/1]).
+:- autoload(library(pprint), [print_term/2]).
+:- use_module(library(debug), [assertion/1]). % Performance doesn't matter
 
 :- det(descriptor_proto_expand_FileDescriptorSet_preds/1).
 descriptor_proto_expand_FileDescriptorSet_preds(Preds) :-
@@ -27,6 +30,8 @@ descriptor_proto_expand_FileDescriptorSet_preds(Preds) :-
      protobufs:proto_meta_normalize/2,               %   protobufs:proto_meta_package(Unnormalized, Normalized)
      protobufs:proto_meta_package/3,                 %   protobufs:proto_meta_package(Package, FileName, Options)
      protobufs:proto_meta_message_type/3,            %   protobufs:proto_meta_message_type(       Fqn,     Package, Name)
+     protobufs:proto_meta_message_type_map_entry/1,  %   (Fqn)
+
      protobufs:proto_meta_field_name/4,              %   protobufs:proto_meta_field_name(         Fqn,     FieldNumber, FieldName, FqnName),
      protobufs:proto_meta_field_json_name/2,         %   protobufs:proto_meta_field_json_name(    FqnName, JsonName)
      protobufs:proto_meta_field_label/2,             %   protobufs:proto_meta_field_label(        FqnName, LabelRepeatOptional) % LABEL_OPTIONAL, LABEL_REQUIRED, LABEL_REPEATED
@@ -35,14 +40,16 @@ descriptor_proto_expand_FileDescriptorSet_preds(Preds) :-
      protobufs:proto_meta_field_default_value/2,     %   protobufs:proto_meta_field_default_value(FqnName, DefaultValue)
      protobufs:proto_meta_field_option_packed/1,     %   protobufs:proto_meta_field_option_packed(FqnName)
      protobufs:proto_meta_enum_type/3,               %   protobufs:proto_meta_enum_type(          FqnName, Fqn, Name)
-     protobufs:proto_meta_enum_value/3               %   protobufs:proto_meta_enum_value(         FqnName, Name, Number)
+     protobufs:proto_meta_enum_value/3,              %   protobufs:proto_meta_enum_value(         FqnName, Name, Number)
+     protobufs:proto_meta_field_oneof_index/2,       % (FqnName, Index)
+     protobufs:proto_meta_oneof/3                    % (FqnName, Index, Name)
             ].
 
 :- det(descriptor_proto_expand_FileDescriptorSet/2).
 descriptor_proto_expand_FileDescriptorSet(Set,
                                           [(:- discontiguous CommaPreds) | Expansion]) :-
     phrase(descriptor_proto_expand_FileDescriptorSet(Set), Expansion),
-    (   false  % for debugging
+    (   true  % for debugging
     ->  writeln('***expansion'),
         print_term(Expansion, [right_margin(160)]),
         nl, writeln('***end expansion'), nl
@@ -75,18 +82,23 @@ list_commalist([Pred|Preds], (Pred,CommaList)) :-
 lookup_pieces(Tag, DataDict, LookupDict) :-
     is_dict(DataDict, Tag),
     dict_pairs(LookupDict, _, LookupPairs),
-    lookup_piece_pairs(LookupPairs, DataDict).
+    lookup_piece_pairs(LookupPairs, DataDict, Tag).
 
-lookup_piece_pairs([], RemainderDict) =>
-    RemainderDict = _{}. % For debugging: assertion(RemainderDict = _{})
-lookup_piece_pairs([Key-(Default-Value)|KDVs], DataDict0) =>
-    dict_create(D0, _, [Key-Value]),
-    (   select_dict(D0, DataDict0, DataDict)
+:- det(lookup_piece_pairs/3).
+% TODO: should use foldl
+lookup_piece_pairs([], RemainderDict, Tag) :-
+    (   RemainderDict = _{} % For debugging: assertion(RemainderDict = _{})
+    ->  true
+    ;   type_error(Tag, RemainderDict),
+        fail
+    ).
+lookup_piece_pairs([Key-(Default-Value)|KDVs], DataDict0, Tag) :-
+    (   select_dict([Key-Value], DataDict0, DataDict)
     ->  true
     ;   Value = Default,
         DataDict = DataDict0
     ),
-    lookup_piece_pairs(KDVs, DataDict).
+    lookup_piece_pairs(KDVs, DataDict, Tag).
 
 :- det(descriptor_proto_expand_FileDescriptorSet//1).
 descriptor_proto_expand_FileDescriptorSet(Set) -->
@@ -173,13 +185,16 @@ expand_FieldDescriptorProto(Fqn, Field) -->
 expand_FieldOptions(FqnName, Options) -->
     { lookup_pieces('FieldOptions', Options,
                     _{
-                      ctype:                _     -_,
+                      ctype:                ''     -_,
                       packed:               false -Option_packed,
                       jstype:               _     -_,
                       lazy:                 false -_,
                       deprecated:           false -_, % TODO: output warning if a deprecated field is used
                       weak:                 false -_,
-                      uninterpreted_option: _     -_
+                      uninterpreted_option: []     -_,
+                      edition:              []    -_,
+                      retention:            0     -_, % RETENTION_UNKNOWN
+                      targets:              []    -_
                      }) },
     (   { Option_packed = true }
     ->  [ protobufs:proto_meta_field_option_packed(FqnName) ]
@@ -210,6 +225,7 @@ expand_EnumValueDescriptorProto(Fqn, Value) -->
                       }) },
     [ protobufs:proto_meta_enum_value(Fqn, Value_name, Value_number) ].
 
+:- det(add_to_fqn/3).
 add_to_fqn(Fqn, Name, FqnName) :-
     atomic_list_concat([Fqn, Name], '.', FqnName).
 

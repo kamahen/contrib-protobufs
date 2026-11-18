@@ -7,11 +7,17 @@ dated 12 Oct 2021 (commit `39013ab238a152b1794080b369f8c6648ab8104b`).
 
 This was originally generated with `protoc` version 3.6.1.
 
-As of June 2024 (`protoc` 3.21.12), the only changes to
-`descriptor.proto` are some comments and the addition of the field
-`unverified_lazy`; `plugin.proto` hasn't changed.
+The bootstrap has been updated to `protoc` version 24.4, dated
+Oct 4, 2023: https://github.com/protocolbuffers/protobuf/releases?q=v24.4
+
 
 ## Installing protobuf (on Ubuntu)
+
+TODO: These notes reflect an older stage of the bootstrap process.
+Both the notes and the Makefile need to be cleaned up, to remove stuff
+that's no longer needed. However, Google has enormous amounts of code
+that depends on protobufs, so all changes are very likely to be
+backwards compatible.
 
 You can use the Ubuntu package `protobuf-compiler` (this has been
 tested with package 3.21.12-3, dated 8 Apr 2023) or you can clone from
@@ -22,12 +28,6 @@ command you may wish to use `./configure --prefix=$HOME/.local` and
 your machine).
 
 There are some additional notes on this in the `Makefile`.
-
-TODO: These notes reflect an older stage of the bootstrap process.
-Both the notes and the Makefile need to be cleaned up, to remove stuff
-that's no longer needed. However, Google has enormous amounts of code
-that depends on protobufs, so all changes are very likely to be
-backwards compatible.
 
 NOTE: the Prolog plugin outputs an error if there is a field it
 doesn't recognize. This is to catch the unlikely event that the
@@ -57,8 +57,7 @@ added to protobufs.
 
 The tests are fairly minimal. For additional testing, see directory `interop`.
 
-
-## descriptor.proto and friends
+## descriptor.proto, plugin.proto, and friends
 
 Naming conventions:
 
@@ -99,7 +98,7 @@ generate Prolog code for easy handling of protobufs.
 ## protoc plugin
 
 We can run a `protoc` plugin by having an executable named
-`protoc-gen-swipl` that is in the `PATH`, which reads a
+`protoc-gen-swipl` in the `PATH` - it reads a
 `CodeGeneratorRequest` from stdin (defined in
 `src/protobuf/src/google/protobuf/compiler/plugin.proto`) and outputs
 to stdout a `CodeGeneratorResponse`.
@@ -113,3 +112,20 @@ increment the version and also `protobufs:verify_version/0`.  (Also
 
 See also
 [https://chromium.googlesource.com/external/github.com/protocolbuffers/protobuf/+/refs/heads/master/docs/implementing_proto3_presence.md](How To Implement Field Presence for Proto3).
+
+## Compile&test  command for development
+
+```
+set -x && \
+DIR=$HOME/src/swipl-devel/build.gcc && \
+mkdir -p $DIR && \
+cd $DIR && \
+rm -rf _deps && \
+find . -depth -name '*protobuf*' -type d | xargs rm -rf && \
+export SWIPL_INSTALL_PREFIX=$HOME/.local && \
+echo y | ../scripts/configure && \
+rm -rf packages/protobufs home/library/ext/protobufs home/doc/packages/examples/protobufs && \
+cmake -DBUILD_PROTOBUFS_PROTOC=ON -DINSTALL_QLF=OFF -DTEST_PROTOBUFS_PROTOC=ON -DUPDATE_PROTOBUFS_PB=ON . && \
+ninja -j6 && \
+ctest -j6 --output-on-failure -R 'proto'
+```

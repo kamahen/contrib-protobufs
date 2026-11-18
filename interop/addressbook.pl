@@ -45,9 +45,10 @@
 % created by addressbook.pl).
 
 :- module(addressbook, [test_write/0, test_read/0]).
+:- asserta(user:file_search_path(protobufs, '.')).
 
 :- use_module(library(protobufs)).
-:- use_module(addressbook_pb). % loads addressbook2_pb, google/protobuf/timestamp_pb.pl
+:- ensure_loaded(addressbook_pb). % loads addressbook2_pb, google/protobuf/timestamp_pb.pl
 
 write_message(Path, Person) :-
     message_file(Path, FullPath),
