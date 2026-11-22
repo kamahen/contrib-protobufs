@@ -34,7 +34,9 @@
               [sequence//2,
                optional//2]).
 :- use_module(library(pcre), [re_replace/4]).
-:- use_module(library(debug), [debug/3, debug/1]).
+:- use_module(library(readutil), [read_file_to_codes/3]).
+:- use_module(library(pprint), [print_term/2]).
+:- use_module(library(debug), [debug/3, debug/1]). % Performance doesn't matter
 
 :- meta_predicate bidi(3, 2, ?, ?, ?).
 
@@ -133,9 +135,21 @@ parse_EnumReservedRange(Indent, 'EnumReservedRange'{start:Start,
     tag_colon_number(Indent, "end", End).
 
 parse_FieldOptions(Indent, 'FieldOptions'{deprecated:Deprecated,
-                                          packed:Packed}) -->
+                                          targets:Targets,
+                                          edition:Edition,
+                                          packed:Packed,
+                                          retention:Retention}) -->
+    optional_tag_colon_id(Indent, "retention", Retention),
+    sequence(tag_colon_id(Indent, "targets"), Targets),
+    optional_name_braces(Indent, "edition_defaults", parse_EditionDefaults,
+                         'EditionDefaults', Edition),
     optional_tag_colon_id(Indent, "deprecated", Deprecated),
     optional_tag_colon_id(Indent, "packed", Packed).
+
+parse_EditionDefaults(Indent, 'EditionDefaults'{edition:Edition,
+                                                value:Value}) -->
+    optional_tag_colon_string(Indent, "edition", Edition),
+    optional_tag_colon_string(Indent, "value", Value).
 
 parse_FileOptions(Indent, 'FileOptions'{java_package: V_java_package,
                                          java_outer_classname: V_java_outer_classname,
@@ -229,10 +243,10 @@ whites([W|Ws]) -->
     [W],
     whites(Ws).
 
-%! bidi(Element, Conversion, Converted)//2 is det.
+%! bidi(+Element, ?Conversion, ?Converted)//2 is det.
 % Does call(Element, Codes), { call(Conversion, Converted, Codes) }
 % in appropriate order, depending on how the arguments are instantiated.
-% ("bidi" for "bidrectional")
+% ("bidi" for "bidirectional")
 bidi(Element, Conversion, Converted) -->
     % Could also be done:
     %    { when( (ground(Converted) ; ground(Codes) ),
