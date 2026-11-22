@@ -47,7 +47,7 @@
 :- use_module(library(plunit)).
 
 :- use_module(library(protobufs)).
-:- use_module(library(protobufs/gen_pb/google/protobuf/descriptor_pb)).
+:- ensure_loaded(library(protobufs/gen_pb/google/protobuf/descriptor_pb)).
 :- use_module(library(lists)).
 :- use_module(library(apply)).
 

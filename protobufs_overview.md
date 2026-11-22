@@ -62,11 +62,20 @@ gen_pb/google/protobuf/compiler/plugin_pb.pl
 
 The =|plugin_pb|= is used by:
 ~~~{.pl}
-:- use_module(gen_pb/google/protobuf/compiler/plugin_pb)
+:- ensure_library(gen_pb/google/protobuf/compiler/plugin_pb)
 ~~~
 which has this (import is relative to the current module):
 ~~~{.pl}
-:- use_module('../descriptor_pb').
+:- asserta(user:file_search_path(protobufs, '.')).
+:- asserta(user:file_search_path(protobufs, library(ext/protobufs/protobufs/gen_pb))).
+:- ensure_loaded(protobufs('google/protobuf/compiler/../descriptor_pb')).
+~~~
+
+The `user:file_search_path/2` facts should be added in the program that
+uses `library(protobufs)` - this can be done using the `-p` option; for example,
+the protobufs compiler has this as its first line:
+~~~{.sh}
+#!/usr/bin/env -S swipl -q -p protobufs='library(ext/protobufs/protobufs/gen_pb)'
 ~~~
 
 Each =X.proto= file generates a =X_pb.pl= file in the directory

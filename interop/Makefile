@@ -9,7 +9,7 @@
 .PHONY=test clean FORCE
 # SHELL:=/bin/bash
 # These files don't need to be kept, but can be useful for debugging:
-.PRECIOUS: %.pb.cc %.pb.h %_pb.h
+.PRECIOUS: %.pb.cc %.pb.h %_pb.h %_pb.pl
 
 include ../bootstrap/common.mk
 PATH_WITH_SWIPL_PLUGIN=$(realpath ../bootstrap):$(PATH_WITH_SWIPL)
@@ -40,10 +40,10 @@ run_addressbook: addressbook.pl addressbook_pb.pl addressbook2_pb.pl \
 	$(PROTOC) -Igoogle/protobuf $(PROTOC_I) --python_out=. --cpp_out=. $?
 
 %_pb.pl: %.proto ../bootstrap/protoc-gen-swipl
-	@# PATH=".:$$PATH" $(PROTOC) $(PROTOC_I) --swipl_out=. $<
+	@# $(PROTOC) $(PROTOC_I) --swipl_out=. $<
 	@# s/OUT_PARAMETER/all/ ? (see comment in protoc-gen-swipl
 	@#                         with Request.parameter)
-	@# don't need: --plugin=$(realpath ../bootstrap/protoc-gen-swipl)
+	@# not needed: --plugin=$(realpath ../bootstrap/protoc-gen-swipl)
 	@#         or: --plugin=protoc-gen-swipl=$(realpath ../bootstrap/protoc-gen-swipl)
 	PATH=$(PATH_WITH_SWIPL_PLUGIN) $(PROTOC) $(PROTOC_I) --swipl_out='OUT_PARAMETER':. $<
 
@@ -80,7 +80,7 @@ scalars1b_from_prolog.wire \
 #    $(SRC_PROTOBUF)/src/google/protobuf/unittest.proto
 # google/protobuf/unittest_pb.pl google/protobuf/unittest_import_pb.pl \
 # google/protobuf/unittest_pb2.py google/protobuf/unittest_import_pb2.py: google/protobuf/unittest.proto google/protobuf/unittest_import.proto ../bootstrap/protoc-gen-swipl
-# 	PATH=$(PATH_WITH_SWIPL_PLUGIN) $(PROTOC) -I google/protobuf $(PROTOC_I) --swipl_out=. --python_out=. unittest_import_public.proto
+# 	PATH=$(PATH_FOR_PROTOC) $(PROTOC) -I google/protobuf $(PROTOC_I) --swipl_out=. --python_out=. unittest_import_public.proto
 
 .PHONY: test_interop_prolog
 test_interop_prolog: test_interop.pl \

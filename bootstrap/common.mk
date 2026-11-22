@@ -11,6 +11,7 @@ BUILD_BIN_DIR?=$(dir $(shell which swipl))
 SWIPL?=$(BUILD_BIN_DIR)swipl
 endif
 PATH_WITH_SWIPL?=$(realpath -s $(BUILD_BIN_DIR)):$$PATH
+PATH_FOR_PROTOC?=$(realpath -s ../bootstrap):$(PATH_WITH_SWIPL)
 
 # Where to find descriptor.proto:
 PROTOC_DOTDOT:=$(realpath -s $(dir $(shell which protoc))/..)
