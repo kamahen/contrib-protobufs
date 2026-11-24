@@ -3,24 +3,29 @@ project(swipl-protobufs)
 
 include("../cmake/PrologPackage.cmake")
 
+# TODO: find_program(PKG_CONFIG_EXE pkg_config)
+# TODO: https://cmake.org/cmake/help/latest/module/FindPkgConfig.html
+# TODO: requires cmake 3.31:
+#       https://cmake.org/cmake/help/latest/command/cmake_pkg_config.html
+
+# download protoc from
+# https://github.com/protocolbuffers/protobuf/releases?page=9#release-v24.4
+set(PROTOC_VERSION "24.4")
+
+add_subdirectory(bootstrap)
+
 AC_CHECK_HEADERS(sys/types.h)
 
 configure_file(config.h.cmake config.h)
-
-# The following test requires installing protobuf-compiler python3-protobuf
-# libprotobuf-devel (or protobuf-devel)
-# See bootstrap/README.md for additional needed packages
-option(TEST_PROTOBUFS_PROTOC
-       "Run protobuf tests that require protoc, etc."
-       OFF)
 
 swipl_plugin(
     protobufs
     C_SOURCES protobufs.c
     PL_LIBS protobufs.pl)
 
-# The following doesn't work because protoc-gen-swipl has to be marked
-# executable. So, just create this "swipl_plugin" by hand:
+# The following swipl_plugin() doesn't work because protoc-gen-swipl
+# has to be marked executable. So, create this "swipl_plugin" using
+# install_src().
 #    swipl_plugin(
 #        protoc-gen-swipl
 #        PL_LIB_SUBDIR protobufs
@@ -31,12 +36,6 @@ install_src(plugin_protoc-gen-swipl_protobufs_pl_libs
             PROGRAMS bootstrap/protoc-gen-swipl
             DESTINATION ${SWIPL_INSTALL_LIBRARY}/protobufs)
 add_index(protobufs bootstrap/protoc-gen-swipl)
-
-# See packages/xpce/CMakeLists for how to add .qlf files
-# - probably not needed; it turned out that the slow "consults" were
-#   due to the debug facts being quite expensive (0.33 secs seconds to
-#   load both *_pb.pl files); they've been removed -- without the
-#   debug facts, this dropped to 0.04 sec (half of this in library(protobufs).
 
 swipl_plugin(
     protoc-gen-swipl-subdir
@@ -105,6 +104,7 @@ swipl_examples(
                 SUBDIR bootstrap
                )
 
+# TODO: move tests to appropriate sub-directories
 test_libs(protobufs
           TEST_FILES
               golden_message.2.3.0 golden_message.2.5.0
@@ -122,9 +122,13 @@ find_program(PKG_CONFIG pkg-config)
 
 # TODO: check minimal versions of protoc, python3, pip protobuf
 
-find_program(PROG_PYTHON NAMES python3 python)
-if(PROG_PYTHON)
-  execute_process(COMMAND ${PROG_PYTHON} -c "from google.protobuf import descriptor_pb2"
+# TODO: find_package(Python COMPONENTS Interpreter)  # Development ?
+#     Python_Interpreter_FOUND    Boolean indicating whether system has the Python interpreter.
+#     Python_EXECUTABLE
+
+find_package(Python COMPONENTS Interpreter)
+if(Python_Interpreter_FOUND)
+  execute_process(COMMAND ${Python_EXECUTABLE} -c "from google.protobuf import descriptor_pb2"
     RESULT_VARIABLE python3_protobuf
     OUTPUT_VARIABLE python3_protobuf_output
     ERROR_QUIET)
@@ -135,18 +139,20 @@ endif()
 #           for d in interop demo bootstrap; do make -C $d clean; done
 #          (also: "git clean -dxf", but that's dangerous)
 if(BUILD_TESTING AND TEST_PROTOBUFS_PROTOC)
-  if(PROG_PROTOC AND PKG_CONFIG AND "${python3_protobuf}" EQUAL "0")
-      find_program(BASH_EXE bash REQUIRED)
+  if("${python3_protobuf}" EQUAL "0")
+      # TODO: this is wrong? - remmove test_bootstrap.sh?
       add_test(NAME "${SWIPL_PKG}:bootstrap"
-               COMMAND ${BASH_EXE} ${CMAKE_CURRENT_SOURCE_DIR}/test_bootstrap.sh ${PROG_SWIPL} ${CMAKE_CURRENT_SOURCE_DIR}/bootstrap)
+               COMMAND cmake -E ${CMAKE_CURRENT_SOURCE_DIR}/test_bootstrap.sh ${PROG_SWIPL} ${CMAKE_CURRENT_SOURCE_DIR}/bootstrap)
       if(USE_GMP)
           add_test(NAME "${SWIPL_PKG}:interop"
-                   COMMAND ${BASH_EXE} ${CMAKE_CURRENT_SOURCE_DIR}/test_interop.sh ${PROG_SWIPL} ${CMAKE_CURRENT_SOURCE_DIR}/interop)
+                   COMMAND cmake -E env PROG_SWIPL=${PROG_SWIPL}
+                                        CMAKE_CURRENT_SOURCE_DIR=${CMAKE_CURRENT_SOURCE_DIR}
+                       ${CMAKE_CURRENT_SOURCE_DIR}/test_interop.sh)
       else()
           message(WARNING "${SWIPL_PKG}:interop skipped because it needs GMP")
       endif()
       add_test(NAME "${SWIPL_PKG}:demo"
-               COMMAND ${BASH_EXE} ${CMAKE_CURRENT_SOURCE_DIR}/test_demo.sh ${PROG_SWIPL} ${CMAKE_CURRENT_SOURCE_DIR}/demo)
+               COMMAND cmake -E ${CMAKE_CURRENT_SOURCE_DIR}/test_demo.sh ${PROG_SWIPL} ${CMAKE_CURRENT_SOURCE_DIR}/demo)
   else()
       message(WARNING "Some ${SWIPL_PKG} tests not run because of missing pkg-config, protoc, or python/protobuf")
       message(WARNING "See demo/README.md for how to set up the build and test environment")
